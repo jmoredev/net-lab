@@ -209,6 +209,15 @@ body {
 }
 
 /* Wide invisible stroke over the cable, so it can be picked with the pointer (S33). */
+/* A cable is also reachable with the keyboard: Enter selects it (S33), and the
+   otherwise invisible hit stroke becomes visible as the focus ring. */
+.cable__hit:focus-visible {
+  outline: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-dasharray: 4 3;
+}
+
 .cable__hit {
   fill: none;
   stroke: transparent;

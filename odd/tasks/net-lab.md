@@ -139,10 +139,10 @@ Reglas de comportamiento:
 **S32 — Puertos a la vista en el lienzo.** Cada dispositivo con puertos Ethernet muestra sus puertos como puntos sobre el borde de su caja, con el nombre del puerto visible junto al punto: `WAN`, `1`..`4` en el router, `1`..`8` en el switch, `ETH` en los equipos con un solo puerto. El puerto ocupado se distingue del libre. El nombre completo del puerto aparece en el tooltip y en el atributo accesible.
 > «En el canvas, que en cada dispositivo aparezca visualmente los puertos ethernet que tiene. POr ejemplo en el router pueden aparecer 5 puertos representados como 5 puntos. Los puertos deben de tener su nombre para que se sepan de cual és»
 
-**S33 — Eliminar un cable.** Al pulsar sobre un cable queda seleccionado y muestra una marca de borrado en su punto medio; pulsarla lo elimina. Con un cable seleccionado, la tecla `Supr` o `Retroceso` también lo elimina, sin confirmación. El panel del dispositivo sigue listando sus cables con su botón de desconectar.
+**S33 — Eliminar un cable.** Al pulsar sobre un cable queda seleccionado y muestra una marca de borrado en su punto medio; pulsarla lo elimina. Con un cable seleccionado, la tecla `Supr` o `Retroceso` también lo elimina, sin confirmación. El cable es alcanzable con el teclado: se enfoca con `Tab`, el anillo de foco lo hace visible y `Intro` o espacio lo seleccionan, de modo que se puede borrar sin ratón. El panel del dispositivo sigue listando sus cables con su botón de desconectar.
 > «Para eliminar una conexión que se pinche sobre un cable y se pueda borrar, ya sea mediante una X o mediante la tecla DEL»
 
-**S34 — Estado del WiFi por color.** La marca de WiFi de cada dispositivo usa tres colores: verde cuando está conectado (en el router, cuando emite; en un cliente, cuando está asociado), gris cuando el WiFi está desactivado, y rojo cuando está activado pero sin conectar.
+**S34 — Estado del WiFi por color.** La marca de WiFi de cada dispositivo usa tres colores: verde cuando está conectado (en el router, cuando emite; en un cliente, cuando está asociado), gris cuando el WiFi está desactivado, y rojo cuando está activado pero sin conectar. El estado se anuncia con un nombre accesible (`WiFi conectado`, `WiFi desactivado`, `WiFi sin conectar`), no solo con el color.
 > «Cuando el wifi esté conectado, que aparezca la señal en verde, desactivado en gris y sin conectar en rojo»
 
 **S35 — Atribución de construcción.** El repositorio declara que fue construido con Gentle-AI mediante el distintivo `Built with Gentle-AI` en su `README.md`, enlazado a `https://github.com/Gentleman-Programming/gentle-ai`. La aplicación **no** muestra la atribución ni carga ningún recurso externo: el aula funciona sin conexión a terceros.
@@ -299,6 +299,7 @@ Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 | T13 | Envío por los cables y tramos WiFi discontinuos, tres colores de WiFi y arreglo del aviso de Fast Refresh | S23, S26, S34 | worker | `26d267c` |
 | T14 | Atribución `Built with Gentle-AI` en el README del repositorio | S35 | inline | `5376046` |
 | T15 | Publicación en GitHub Pages: rama `main`, entorno `github-pages` y verificación de S2 en producción | S1, S2 | inline | ver L15 |
+| T18 | Accesibilidad: estado de WiFi anunciado y cables seleccionables con teclado | S33, S34 | inline | ver L19 |
 | T17 | Tier de tests de interacción con jsdom y Testing Library, más las dos correcciones que destapó | S11, S13, S22, S25, S28, S33, S34 | worker | ver L18 |
 | T16 | Acciones del workflow a majors con Node 24 (checkout 7, setup-node 7, configure-pages 6, upload-pages-artifact 5, deploy-pages 5, pnpm/action-setup 6) | S1, S2 | inline | `e988996` |
 
@@ -380,6 +381,8 @@ Efecto de L6: nuevas S30 (NAT en dos frases con analogía) y S31 (persistencia e
 **L7 — Estado del trabajo.** Especificación cerrada (S1–S31, D1–D16). T2 y T3 implementados: scaffold Vite + React + TS, motor de dominio con 60 tests en verde y build de 69 KB gzip. Siguiente: T4.
 
 **L8 — Capa de UI entregada (T4–T7, commit `f3b6ac4`).** Paleta, lienzo SVG, panel del dispositivo, analogías y estilos. Verificación: `tsc --noEmit` limpio, 75 tests en verde, build de 79 KB gzip. Tres tensiones de la especificación detectadas al implementar y resueltas acá: S10 vs S26.5 (la marca de WiFi se admite en el lienzo), S27 (el nodo Internet se puede pulsar para ver información de lectura, sin configuración) y S12 (las dos acciones de conexión se ofrecen a la vez, sin diálogo previo).
+
+**L19 — Accesibilidad del lienzo (T18).** Dos huecos detectados al escribir los tests de L18 y corregidos: la marca de WiFi comunicaba su estado solo por color —el `<title>` de un `<g>` no lo anuncia un lector de pantalla— y ahora lleva `role="img"` con nombre accesible; los cables solo se podían seleccionar con el puntero y ahora son enfocables, con anillo de foco visible y `Intro`/espacio para seleccionar, de modo que `Supr` también funciona sin ratón. Dos tests nuevos: 141 en total.
 
 **L18 — Tests de interacción (T17).** Tier nuevo con `jsdom` 30, `@testing-library/react` 16 y `user-event` 14: 15 tests sobre los componentes reales, con stubs de `setPointerCapture`, `createSVGPoint`/`getScreenCTM` y `elementFromPoint`, porque jsdom no tiene layout ni captura de puntero. Total 139 tests en verde.
 

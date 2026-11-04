@@ -331,9 +331,18 @@ export function LabCanvas({
                   y1={ends.start.y}
                   x2={ends.end.x}
                   y2={ends.end.y}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Cable entre ${nameOf(lab, link.a.deviceId)} y ${nameOf(lab, link.b.deviceId)}`}
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
                     event.stopPropagation();
+                    if (busy) return;
+                    dispatch({ type: 'select-link', linkId: link.id });
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
                     if (busy) return;
                     dispatch({ type: 'select-link', linkId: link.id });
                   }}
@@ -564,6 +573,10 @@ function WifiMark({ state }: { state: WifiState }) {
       strokeWidth={1.6}
       strokeLinecap="round"
       pointerEvents="none"
+      // The state is colour-only in CSS, so the accessible name is what carries it for
+      // assistive technology (S34).
+      role="img"
+      aria-label={WIFI_STATE_TITLE[state]}
     >
       <title>{WIFI_STATE_TITLE[state]}</title>
       <path d="M0 4.5a10 10 0 0 1 12 0" />
