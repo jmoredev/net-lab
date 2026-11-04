@@ -129,14 +129,21 @@ Reglas de comportamiento:
 - El switch nunca es origen ni destino: es transparente y solo aparece como tramo del camino. Los extremos son equipos finales y el nodo Internet.
 - La animación no muestra traducciones del paquete ni etapas intermedias (NAT, MAC, tablas, ARP): solo el recorrido, con la etiqueta del origen y del destino.
 - La ida y la vuelta se distinguen por color: la ida en el color de acento y la vuelta en el color de estado conectado, con el mismo marcador.
+- El paquete viaja por el cable: el recorrido entra y sale por los puertos reales de cada tramo, nunca por el centro de las cajas.
+- Los tramos inalámbricos no tienen cable: se dibujan como una línea discontinua ficticia entre los dos dispositivos, y el paquete la recorre igual.
 > «La animación muestra solo el viaje con la etiqueta de origen destino, no las traducciones que se van haciendo del paquete»
 > «En un envío, cuando haya respuesta, que viaje de otro color. Ahora mismo van ambos en azul»
+> «Cuando se haga un envío entre dispositivos, que se haga a través del cable que los interconecta.»
+> «Cuando se haga un envio mediante wifi que se haga a través de una línea discontinua ficticia entre los dispositivos»
 
 **S32 — Puertos a la vista en el lienzo.** Cada dispositivo con puertos Ethernet muestra sus puertos como puntos sobre el borde de su caja, con el nombre del puerto visible junto al punto: `WAN`, `1`..`4` en el router, `1`..`8` en el switch, `ETH` en los equipos con un solo puerto. El puerto ocupado se distingue del libre. El nombre completo del puerto aparece en el tooltip y en el atributo accesible.
 > «En el canvas, que en cada dispositivo aparezca visualmente los puertos ethernet que tiene. POr ejemplo en el router pueden aparecer 5 puertos representados como 5 puntos. Los puertos deben de tener su nombre para que se sepan de cual és»
 
 **S33 — Eliminar un cable.** Al pulsar sobre un cable queda seleccionado y muestra una marca de borrado en su punto medio; pulsarla lo elimina. Con un cable seleccionado, la tecla `Supr` o `Retroceso` también lo elimina, sin confirmación. El panel del dispositivo sigue listando sus cables con su botón de desconectar.
 > «Para eliminar una conexión que se pinche sobre un cable y se pueda borrar, ya sea mediante una X o mediante la tecla DEL»
+
+**S34 — Estado del WiFi por color.** La marca de WiFi de cada dispositivo usa tres colores: verde cuando está conectado (en el router, cuando emite; en un cliente, cuando está asociado), gris cuando el WiFi está desactivado, y rojo cuando está activado pero sin conectar.
+> «Cuando el wifi esté conectado, que aparezca la señal en verde, desactivado en gris y sin conectar en rojo»
 
 ### G. Estado inicial y ejemplo
 
@@ -151,7 +158,7 @@ Composición propuesta del ejemplo: router con WiFi activo y `192.168.1.1`, cabl
 **S26 — Interfaz clara y limpia, sin distracciones.** El lienzo es la superficie dominante y el alumnado no ve nada que no sea accionable o informativo. Restricciones verificables:
 1. Tres zonas y nada más: paleta de dispositivos, lienzo, panel del dispositivo seleccionado. Nunca dos paneles abiertos a la vez.
 2. Sin tutorial modal, sin carruseles, sin onboarding, sin elementos decorativos, sin imágenes de fondo. La ayuda vive en el panel del dispositivo (S5).
-3. Paleta de color mínima: neutros de fondo, un único color de acento, y color de estado reservado a dos significados: conectado y sin Internet. El rojo no se usa para nada más.
+3. Paleta de color mínima: neutros de fondo, un único color de acento, y color de estado reservado a dos significados: conectado y sin conexión. El rojo se usa solo para estados de falta de conexión: sin Internet y WiFi sin conectar (S34).
 4. Animación solo en la simulación de tráfico (S23) y en transiciones de estado de hasta 150 ms. Nada se mueve solo.
 5. Sobre el lienzo cada dispositivo muestra solo su icono, su etiqueta con nombre e IP y dos marcas de estado: el resaltado de S22 y la señal de WiFi de S10. Todo lo demás (MAC, puertos, direccionamiento) vive en el panel.
 > «La interfaz debe de ser clara y limpia, sin distracciones para el alumnado»
@@ -231,7 +238,7 @@ Un sobremesa sin WiFi es discutible, pero hace el ejercicio más claro; si prefi
 
 **D15 — Tono de las analogías. *(aprobada)*** Una frase, lenguaje cotidiano del alumnado, sin infantilizar y sin introducir un segundo término técnico nuevo. La analogía ilustra el concepto; el nombre correcto sigue siendo el protagonista.
 
-**D16 — Sistema visual mínimo. *(aprobada)*** Neutros + un acento + dos colores de estado, tipografía de sistema, densidad baja, controles grandes. Es la aterrización de S26: si un elemento no informa ni se acciona, no se dibuja.
+**D16 — Sistema visual mínimo. *(aprobada)*** Neutros + un acento + dos colores de estado (verde conectado, rojo sin conexión) + un gris para «desactivado», tipografía de sistema, densidad baja, controles grandes. Es la aterrización de S26: si un elemento no informa ni se acciona, no se dibuja.
 
 **D17 — Un solo router por laboratorio. *(aprobada)*** Dos routers obligan a enrutar entre subredes, que está fuera de alcance: el modelo quedaría a medias. La paleta no ofrece un segundo router y responde `Ya hay un router en el laboratorio.`
 
@@ -285,7 +292,8 @@ Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 | T9 | Laboratorio de ejemplo preconfigurado y vaciado | S24 | inline | pendiente |
 | T10 | Despliegue en GitHub Pages y README de aula | S1, S2 | inline | pendiente |
 | T11 | Persistencia del laboratorio en `localStorage` con descarte de datos inválidos | S31 | inline | pendiente |
-| T12 | Puertos visibles con nombre, cable arrastrando de puerto a puerto, selección y borrado de cables, borrado de dispositivo sobre la paleta y vuelta en otro color | S11, S13, S23, S32, S33 | worker | pendiente |
+| T12 | Puertos visibles con nombre, cable arrastrando de puerto a puerto, selección y borrado de cables, borrado de dispositivo sobre la paleta y vuelta en otro color | S11, S13, S23, S32, S33 | worker | `924de83` |
+| T13 | Envío por los cables y tramos WiFi discontinuos, tres colores de WiFi y arreglo del aviso de Fast Refresh | S23, S26, S34 | worker | pendiente |
 
 ## Log
 
@@ -363,6 +371,18 @@ Efecto de L6: nuevas S30 (NAT en dos frases con analogía) y S31 (persistencia e
 **L7 — Estado del trabajo.** Especificación cerrada (S1–S31, D1–D16). T2 y T3 implementados: scaffold Vite + React + TS, motor de dominio con 60 tests en verde y build de 69 KB gzip. Siguiente: T4.
 
 **L8 — Capa de UI entregada (T4–T7, commit `f3b6ac4`).** Paleta, lienzo SVG, panel del dispositivo, analogías y estilos. Verificación: `tsc --noEmit` limpio, 75 tests en verde, build de 79 KB gzip. Tres tensiones de la especificación detectadas al implementar y resueltas acá: S10 vs S26.5 (la marca de WiFi se admite en el lienzo), S27 (el nodo Internet se puede pulsar para ver información de lectura, sin configuración) y S12 (las dos acciones de conexión se ofrecen a la vez, sin diálogo previo).
+
+**L12 — Cambios de envío y WiFi del usuario (texto literal):**
+
+```
+- Cuando se haga un envío entre dispositivos, que se haga a través del cable que los interconecta.
+- Cuando el wifi esté conectado, que aparezca la señal en verde, desactivado en gris y sin conectar en rojo.
+- Cuando se haga un envio mediante wifi que se haga a través de una línea discontinua ficticia entre los dispositivos
+```
+
+El usuario adjuntó además la salida de `pnpm dev`, que muestra un aviso de Fast Refresh: `Could not Fast Refresh ("PALETTE_KINDS" export is incompatible)`. Es un defecto de DX introducido al exportar constantes desde un archivo de componente; se corrige en T13.
+
+Efecto de L12: S23 ampliada (el paquete recorre el cable por sus puertos y los tramos WiFi son discontinuos), nueva S34 (tres colores de WiFi), S26.3 y D16 ajustadas (el rojo pasa a cubrir los estados de falta de conexión), tarea T13.
 
 **L11 — Cambios de interacción del usuario (texto literal):**
 
