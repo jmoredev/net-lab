@@ -2,9 +2,22 @@ import { useEffect, useState, type Dispatch } from 'react';
 import type { DeviceStatus } from '../../domain/diagnostics';
 import { availablePorts, getDevice, portsOf, type Lab } from '../../domain/lab';
 import { CAPABILITIES, type AddressingMode, type Device } from '../../domain/types';
+import { resolveDiagnosis } from '../../i18n';
+import { useI18n } from '../../i18n/LanguageProvider';
+import type { Lang, MessageKey, MessageParams } from '../../i18n/types';
 import { ANALOGIES, type AnalogyKey } from '../analogies';
-import { modeLabel, deviceLabel, portLabel } from '../format';
+import { deviceKindLabel, modeLabel, deviceLabel, portLabel } from '../format';
 import type { LabAction, LabState } from '../labReducer';
+
+/**
+ * Why a packet could not leave: the diagnosis of the device that blocks it, or the fact
+ * that no route exists at all (S23). The catalogue turns it into a sentence, so the reason
+ * is never a string carried across components.
+ */
+export interface SendProblem {
+  key: MessageKey;
+  params?: MessageParams;
+}
 
 export interface DevicePanelProps {
   state: LabState;
@@ -13,10 +26,11 @@ export interface DevicePanelProps {
   /** True while an animation runs: sending again is disabled (S23). */
   busy: boolean;
   /** Starts a trip; returns the reason shown when there is no route, or null on success. */
-  onSend: (fromId: string, toId: string) => string | null;
+  onSend: (fromId: string, toId: string) => SendProblem | null;
 }
 
 export function DevicePanel({ state, statuses, dispatch, busy, onSend }: DevicePanelProps) {
+  const { t, lang } = useI18n();
   const { lab } = state;
   const device = state.selectedId ? getDevice(lab, state.selectedId) : undefined;
   if (!device) return null;
@@ -26,9 +40,9 @@ export function DevicePanel({ state, statuses, dispatch, busy, onSend }: DeviceP
   const isInternet = device.kind === 'internet';
 
   return (
-    <aside className="panel" aria-label="Panel del dispositivo seleccionado">
+    <aside className="panel" aria-label={t('panel.label')}>
       <header className="panel__header">
-        <p className="panel__kind">{caps.label}</p>
+        <p className="panel__kind">{deviceKindLabel(lang, device.kind)}</p>
         {isInternet ? (
           <h2 className="panel__name-static">{device.name}</h2>
         ) : (
@@ -36,22 +50,22 @@ export function DevicePanel({ state, statuses, dispatch, busy, onSend }: DeviceP
         )}
       </header>
 
-      {isInternet ? (
-        <p className="panel__note">
-          El nodo Internet está fijo: no se puede mover ni eliminar.
-        </p>
-      ) : null}
+      {isInternet ? <p className="panel__note">{t('panel.internetFixed')}</p> : null}
 
       <section className="panel__section">
-        <Row label="MAC" value={device.mac ?? '—'} />
-        <Row label="IP" value={status?.ip ?? '—'} />
-        <Row label="Puerta de enlace" value={status?.gateway ?? '—'} />
+        <Row label={t('field.mac')} value={device.mac ?? '—'} />
+        <Row label={t('field.ip')} value={status?.ip ?? '—'} />
+        <Row label={t('field.gateway')} value={status?.gateway ?? '—'} />
         <Row
-          label="Internet"
-          value={status?.hasInternet ? 'Con salida a Internet' : 'Sin salida a Internet'}
+          label={t('field.internet')}
+          value={t(status?.hasInternet ? 'status.online' : 'status.offline')}
           tone={status?.hasInternet ? 'online' : 'offline'}
         />
-        {status?.reason ? <p className="panel__reason">{status.reason.text}</p> : null}
+        {status?.reason ? (
+          // The row of S22 comes from the catalogue of the active language, never from
+          // `reason.text`, which is only the Spanish fallback of the domain (S38, S40).
+          <p className="panel__reason">{resolveDiagnosis(lang, status.reason)}</p>
+        ) : null}
       </section>
 
       {device.kind === 'router' ? (
@@ -83,13 +97,13 @@ export function DevicePanel({ state, statuses, dispatch, busy, onSend }: DeviceP
             className="button button--wide"
             onClick={() => dispatch({ type: 'delete-device', id: device.id })}
           >
-            Eliminar dispositivo
+            {t('action.deleteDevice')}
           </button>
         </section>
       )}
 
       <section className="panel__section">
-        <h3 className="panel__subtitle">Conceptos</h3>
+        <h3 className="panel__subtitle">{t('panel.concepts')}</h3>
         {conceptsFor(device).map((key) => (
           <Concept key={key} name={key} />
         ))}
@@ -98,6 +112,7 @@ export function DevicePanel({ state, statuses, dispatch, busy, onSend }: DeviceP
   );
 }
 
+/** Concepts of S5 a device teaches, in the order they are read. */
 function conceptsFor(device: Device): AnalogyKey[] {
   if (device.kind === 'router') return ['router', 'gateway', 'wan', 'lan', 'dhcp', 'subnet', 'nat'];
   if (device.kind === 'switch') return ['switch', 'lan', 'cable'];
@@ -111,7 +126,8 @@ function conceptsFor(device: Device): AnalogyKey[] {
 }
 
 function Concept({ name }: { name: AnalogyKey }) {
-  const entry = ANALOGIES[name];
+  const { lang } = useI18n();
+  const entry = ANALOGIES[lang][name];
   return (
     <div className="concept">
       <p className="concept__term">{entry.term}</p>
@@ -131,6 +147,7 @@ function Row({ label, value, tone }: { label: string; value: string; tone?: 'onl
 }
 
 function NameField({ device, dispatch }: { device: Device; dispatch: Dispatch<LabAction> }) {
+  const { t } = useI18n();
   const [draft, setDraft] = useState(device.name);
   useEffect(() => setDraft(device.name), [device.id, device.name]);
 
@@ -142,7 +159,7 @@ function NameField({ device, dispatch }: { device: Device; dispatch: Dispatch<La
   return (
     <div className="field">
       <label className="field__label" htmlFor="device-name">
-        Nombre
+        {t('field.name')}
       </label>
       <input
         id="device-name"
@@ -246,6 +263,7 @@ function ClientControls({
   status: DeviceStatus | undefined;
   dispatch: Dispatch<LabAction>;
 }) {
+  const { t, lang } = useI18n();
   const caps = CAPABILITIES[device.kind];
   const manual = device.addressing === 'manual';
 
@@ -267,11 +285,11 @@ function ClientControls({
 
   return (
     <section className="panel__section">
-      <h3 className="panel__subtitle">Conexiones</h3>
+      <h3 className="panel__subtitle">{t('panel.connections')}</h3>
       {caps.ports.length > 0 ? (
         <Toggle
           id="device-ethernet"
-          label="Ethernet"
+          label={t('field.ethernet')}
           checked={device.ethernetEnabled}
           onChange={(enabled) => dispatch({ type: 'set-ethernet', id: device.id, enabled })}
         />
@@ -279,7 +297,7 @@ function ClientControls({
       {caps.wifi ? (
         <Toggle
           id="device-wifi"
-          label="WiFi"
+          label={t('field.wifi')}
           checked={device.wifiEnabled}
           onChange={(enabled) => dispatch({ type: 'set-wifi', id: device.id, enabled })}
         />
@@ -290,13 +308,13 @@ function ClientControls({
         disabled={!caps.wifi}
         onClick={() => dispatch({ type: 'associate-wifi', id: device.id, associated: !device.wifiAssociated })}
       >
-        {device.wifiAssociated ? 'Desconectar de la WiFi' : 'Conectar a la WiFi'}
+        {t(device.wifiAssociated ? 'action.disconnectWifi' : 'action.connectWifi')}
       </button>
 
-      <h3 className="panel__subtitle">Direccionamiento</h3>
+      <h3 className="panel__subtitle">{t('panel.addressing')}</h3>
       <div className="field">
         <label className="field__label" htmlFor="device-addressing">
-          Dirección IP
+          {t('field.ipAddress')}
         </label>
         <select
           id="device-addressing"
@@ -304,15 +322,15 @@ function ClientControls({
           value={device.addressing}
           onChange={(event) => changeMode(event.target.value === 'manual' ? 'manual' : 'dhcp')}
         >
-          <option value="dhcp">{modeLabel('dhcp')}</option>
-          <option value="manual">{modeLabel('manual')}</option>
+          <option value="dhcp">{modeLabel(lang, 'dhcp')}</option>
+          <option value="manual">{modeLabel(lang, 'manual')}</option>
         </select>
       </div>
       {manual ? (
         <>
           <TextField
             id="device-manual-ip"
-            label="IP manual"
+            label={t('field.manualIp')}
             value={device.manualIp ?? ''}
             onCommit={(value) =>
               dispatch({
@@ -328,7 +346,7 @@ function ClientControls({
           />
           <TextField
             id="device-manual-gateway"
-            label="Puerta de enlace"
+            label={t('field.gateway')}
             value={device.manualGateway ?? ''}
             onCommit={(value) =>
               dispatch({
@@ -357,31 +375,32 @@ function RouterControls({
   lab: Lab;
   dispatch: Dispatch<LabAction>;
 }) {
+  const { t } = useI18n();
   const router = lab.router;
   if (!router) return null;
 
   return (
     <section className="panel__section">
-      <h3 className="panel__subtitle">Configuración</h3>
+      <h3 className="panel__subtitle">{t('panel.configuration')}</h3>
       <Toggle
         id="router-wifi"
-        label="WiFi"
+        label={t('field.wifi')}
         checked={device.wifiEnabled}
         onChange={(enabled) => dispatch({ type: 'set-wifi', id: device.id, enabled })}
       />
       <TextField
         id="router-lan-ip"
-        label="Dirección LAN del router"
+        label={t('field.routerLanIp')}
         value={router.lanIp}
         onCommit={(ip) => dispatch({ type: 'set-router-ip', ip })}
       />
       <p className="panel__static">
-        <span className="panel__key">Dirección WAN</span>
-        <span className="panel__value">{router.wanIp ?? 'Sin conexión'}</span>
+        <span className="panel__key">{t('field.wanAddress')}</span>
+        <span className="panel__value">{router.wanIp ?? t('field.noConnection')}</span>
       </p>
       <TextField
         id="router-dhcp-start"
-        label="Rango DHCP: desde"
+        label={t('field.dhcpStart')}
         type="number"
         min={2}
         max={254}
@@ -396,7 +415,7 @@ function RouterControls({
       />
       <TextField
         id="router-dhcp-end"
-        label="Rango DHCP: hasta"
+        label={t('field.dhcpEnd')}
         type="number"
         min={2}
         max={254}
@@ -412,16 +431,19 @@ function RouterControls({
 }
 
 function PortList({ lab, device }: { lab: Lab; device: Device }) {
+  const { t, lang } = useI18n();
   return (
     <section className="panel__section">
-      <h3 className="panel__subtitle">Puertos</h3>
+      <h3 className="panel__subtitle">{t('panel.ports')}</h3>
       <ul className="ports">
         {portsOf(device).map((portId) => {
           const peer = occupantOf(lab, device.id, portId);
           return (
             <li key={portId} className="ports__row">
-              <span className="ports__name">{portLabel(device, portId)}</span>
-              <span className="ports__state">{peer ? `Ocupado por ${peer.name}` : 'Libre'}</span>
+              <span className="ports__name">{portLabel(lang, device, portId)}</span>
+              <span className="ports__state">
+                {peer ? t('port.occupied', { device: peer.name }) : t('port.free')}
+              </span>
             </li>
           );
         })}
@@ -474,11 +496,13 @@ function CableSection({
   device: Device;
   dispatch: Dispatch<LabAction>;
 }) {
+  const { t, lang } = useI18n();
+
   if (device.kind === 'phone') {
     return (
       <section className="panel__section">
-        <h3 className="panel__subtitle">Cable</h3>
-        <p className="panel__note">Un móvil no admite cable: solo se conecta por WiFi.</p>
+        <h3 className="panel__subtitle">{t('panel.cable')}</h3>
+        <p className="panel__note">{t('panel.phoneNoCable')}</p>
       </section>
     );
   }
@@ -495,7 +519,7 @@ function CableSection({
 
   return (
     <section className="panel__section">
-      <h3 className="panel__subtitle">Conectar por cable</h3>
+      <h3 className="panel__subtitle">{t('panel.connectByCable')}</h3>
       {[...groups.values()].map((rows) => (
         <div key={rows[0].peer.id} className="cable-group">
           <p className="cable-group__title">{rows[0].peer.name}</p>
@@ -513,7 +537,7 @@ function CableSection({
                     })
                   }
                 >
-                  {portLabel(row.peer, row.portId)}
+                  {portLabel(lang, row.peer, row.portId)}
                 </button>
               </li>
             ))}
@@ -533,6 +557,7 @@ function CableList({
   device: Device;
   dispatch: Dispatch<LabAction>;
 }) {
+  const { t, lang } = useI18n();
   const links = lab.links.filter(
     (link) => link.a.deviceId === device.id || link.b.deviceId === device.id,
   );
@@ -540,7 +565,7 @@ function CableList({
 
   return (
     <section className="panel__section">
-      <h3 className="panel__subtitle">Cables</h3>
+      <h3 className="panel__subtitle">{t('panel.cables')}</h3>
       <ul className="cables">
         {links.map((link) => {
           const mine = link.a.deviceId === device.id ? link.a : link.b;
@@ -550,14 +575,14 @@ function CableList({
           return (
             <li key={link.id} className="cables__row">
               <span className="cables__text">
-                {portLabel(device, mine.portId)} — {peer.name}
+                {portLabel(lang, device, mine.portId)} — {peer.name}
               </span>
               <button
                 type="button"
                 className="button"
                 onClick={() => dispatch({ type: 'disconnect-cable', linkId: link.id })}
               >
-                Desconectar
+                {t('action.disconnect')}
               </button>
             </li>
           );
@@ -572,40 +597,46 @@ interface SendTarget {
   label: string;
 }
 
+interface SendSectionProps {
+  device: Device;
+  lab: Lab;
+  statuses: Record<string, DeviceStatus>;
+  busy: boolean;
+  onSend: (fromId: string, toId: string) => SendProblem | null;
+}
+
 /**
  * S23 destination list: every device of another kind, never the origin itself, and the
  * Internet node always listed last under its own name.
  */
-function sendTargets(lab: Lab, origin: Device, statuses: Record<string, DeviceStatus>): SendTarget[] {
+function sendTargets(
+  lab: Lab,
+  origin: Device,
+  statuses: Record<string, DeviceStatus>,
+  lang: Lang,
+  internetName: string,
+): SendTarget[] {
   const targets = lab.devices
     .filter(
       (candidate) =>
         candidate.id !== origin.id && candidate.kind !== 'internet' && candidate.kind !== 'switch',
     )
-    .map((candidate) => ({ id: candidate.id, label: deviceLabel(candidate, statuses[candidate.id]) }));
+    .map((candidate) => ({
+      id: candidate.id,
+      label: deviceLabel(lang, candidate, statuses[candidate.id]),
+    }));
 
   const internet = lab.devices.find((candidate) => candidate.kind === 'internet');
-  if (internet && origin.kind !== 'internet') targets.push({ id: internet.id, label: 'Internet' });
+  if (internet && origin.kind !== 'internet') targets.push({ id: internet.id, label: internetName });
   return targets;
 }
 
 /** Send control of S23: choose a destination, launch the round trip, or say why it cannot go. */
-function SendSection({
-  device,
-  lab,
-  statuses,
-  busy,
-  onSend,
-}: {
-  device: Device;
-  lab: Lab;
-  statuses: Record<string, DeviceStatus>;
-  busy: boolean;
-  onSend: (fromId: string, toId: string) => string | null;
-}) {
+function SendSection({ device, lab, statuses, busy, onSend }: SendSectionProps) {
+  const { t, lang } = useI18n();
   const [chosenId, setChosenId] = useState<string | null>(null);
-  const [failure, setFailure] = useState<{ originId: string; text: string } | null>(null);
-  const targets = sendTargets(lab, device, statuses);
+  const [failure, setFailure] = useState<{ originId: string; problem: SendProblem } | null>(null);
+  const targets = sendTargets(lab, device, statuses, lang, t('kind.internet'));
   const destination = targets.find((target) => target.id === chosenId) ?? targets[0];
 
   // Any change in the lab can open a route, so a previous refusal is never left on screen.
@@ -614,17 +645,17 @@ function SendSection({
   function send() {
     if (!destination) return;
     const problem = onSend(device.id, destination.id);
-    setFailure(problem === null ? null : { originId: device.id, text: problem });
+    setFailure(problem === null ? null : { originId: device.id, problem });
   }
 
   return (
     <section className="panel__section">
-      <h3 className="panel__subtitle">Enviar un paquete</h3>
+      <h3 className="panel__subtitle">{t('panel.send')}</h3>
       {destination ? (
         <>
           <div className="field">
             <label className="field__label" htmlFor="send-destination">
-              Destino
+              {t('field.destination')}
             </label>
             <select
               id="send-destination"
@@ -649,14 +680,14 @@ function SendSection({
             disabled={busy}
             onClick={send}
           >
-            Enviar
+            {t('action.send')}
           </button>
         </>
       ) : (
-        <p className="panel__note">No hay ningún otro dispositivo al que enviar.</p>
+        <p className="panel__note">{t('panel.noTargets')}</p>
       )}
       {failure && failure.originId === device.id ? (
-        <p className="panel__reason">{failure.text}</p>
+        <p className="panel__reason">{t(failure.problem.key, failure.problem.params)}</p>
       ) : null}
     </section>
   );
