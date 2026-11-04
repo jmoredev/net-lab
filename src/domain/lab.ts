@@ -69,8 +69,8 @@ export function availablePorts(lab: Lab, deviceId: string): string[] {
 }
 
 export function addDevice(lab: Lab, kind: DeviceKind, position: Point): Result<Lab> {
-  if (kind === 'internet') return fail('El nodo Internet no se puede añadir.');
-  if (kind === 'router' && lab.router) return fail('Ya hay un router en el laboratorio.');
+  if (kind === 'internet') return fail('internet-not-addable', 'El nodo Internet no se puede añadir.');
+  if (kind === 'router' && lab.router) return fail('router-already-exists', 'Ya hay un router en el laboratorio.');
 
   const seq = lab.seq;
   const device: Device = {
@@ -109,19 +109,19 @@ export function addDevice(lab: Lab, kind: DeviceKind, position: Point): Result<L
 
 export function renameDevice(lab: Lab, deviceId: string, rawName: string): Result<Lab> {
   const name = rawName.trim();
-  if (!name) return fail('El nombre no puede estar vacío.');
+  if (!name) return fail('name-empty', 'El nombre no puede estar vacío.');
   const device = getDevice(lab, deviceId);
-  if (!device) return fail('Ese dispositivo ya no existe.');
+  if (!device) return fail('device-missing', 'Ese dispositivo ya no existe.');
   const taken = lab.devices.some(
     (other) => other.id !== deviceId && other.name.toLowerCase() === name.toLowerCase(),
   );
-  if (taken) return fail(`Ya hay un dispositivo llamado ${name}.`);
+  if (taken) return fail('name-taken', `Ya hay un dispositivo llamado ${name}.`, { name });
   return ok(replaceDevice(lab, deviceId, { ...device, name }));
 }
 
 export function deleteDevice(lab: Lab, deviceId: string): Result<Lab> {
-  if (deviceId === INTERNET_ID) return fail('El nodo Internet no se puede eliminar.');
-  if (!getDevice(lab, deviceId)) return fail('Ese dispositivo ya no existe.');
+  if (deviceId === INTERNET_ID) return fail('internet-not-deletable', 'El nodo Internet no se puede eliminar.');
+  if (!getDevice(lab, deviceId)) return fail('device-missing', 'Ese dispositivo ya no existe.');
 
   const next: Lab = {
     ...lab,
@@ -141,34 +141,34 @@ export function moveDevice(lab: Lab, deviceId: string, position: Point): Lab {
 export function connectCable(lab: Lab, a: PortRef, b: PortRef): Result<Lab> {
   const deviceA = getDevice(lab, a.deviceId);
   const deviceB = getDevice(lab, b.deviceId);
-  if (!deviceA || !deviceB) return fail('Ese dispositivo ya no existe.');
-  if (a.deviceId === b.deviceId) return fail('Un dispositivo no se puede conectar a sí mismo.');
+  if (!deviceA || !deviceB) return fail('device-missing', 'Ese dispositivo ya no existe.');
+  if (a.deviceId === b.deviceId) return fail('self-connection', 'Un dispositivo no se puede conectar a sí mismo.');
   // Checked before port lookup: a phone has no Ethernet port at all, so the useful
   // answer is "use WiFi", not "that port does not exist".
   if (portsOf(deviceA).length === 0 || portsOf(deviceB).length === 0) {
-    return fail('Un móvil no admite cable: solo se conecta por WiFi.');
+    return fail('phone-no-cable', 'Un móvil no admite cable: solo se conecta por WiFi.');
   }
   if (!portsOf(deviceA).includes(a.portId) || !portsOf(deviceB).includes(b.portId)) {
-    return fail('Ese puerto no existe.');
+    const missingPort = portsOf(deviceA).includes(a.portId) ? b.portId : a.portId;
+    return fail('port-missing', 'Ese puerto no existe.', { port: missingPort });
   }
   if (!portIsFree(lab, a.deviceId, a.portId) || !portIsFree(lab, b.deviceId, b.portId)) {
-    return fail('Ese puerto ya está ocupado.');
+    const busyPort = portIsFree(lab, a.deviceId, a.portId) ? b.portId : a.portId;
+    return fail('port-occupied', 'Ese puerto ya está ocupado.', { port: busyPort });
   }
   if (a.portId === 'wan' || b.portId === 'wan') {
     const wanSide = a.portId === 'wan' ? deviceA : deviceB;
     const otherSide = a.portId === 'wan' ? deviceB : deviceA;
     if (wanSide.kind !== 'router' && wanSide.kind !== 'internet') {
-      return fail('Ese puerto WAN no pertenece a un router.');
+      return fail('wan-not-router', 'Ese puerto WAN no pertenece a un router.');
     }
     const properlyPaired =
       (wanSide.kind === 'router' && otherSide.kind === 'internet' && otherSide.id === INTERNET_ID) ||
       (wanSide.kind === 'internet' && otherSide.kind === 'router');
     if (!properlyPaired) {
-      return fail(
-        wanSide.kind === 'internet'
-          ? 'El nodo Internet solo se conecta al puerto WAN del router.'
-          : 'El puerto WAN solo se conecta a Internet.',
-      );
+      return wanSide.kind === 'internet'
+        ? fail('internet-only-wan', 'El nodo Internet solo se conecta al puerto WAN del router.')
+        : fail('wan-only-internet', 'El puerto WAN solo se conecta a Internet.');
     }
   }
 
@@ -182,7 +182,7 @@ export function connectCable(lab: Lab, a: PortRef, b: PortRef): Result<Lab> {
 
 export function disconnectCable(lab: Lab, linkId: string): Result<Lab> {
   const link = lab.links.find((candidate) => candidate.id === linkId);
-  if (!link) return fail('Ese cable ya no existe.');
+  if (!link) return fail('cable-missing', 'Ese cable ya no existe.');
   const next: Lab = { ...lab, links: lab.links.filter((candidate) => candidate.id !== linkId) };
   if (isWanLink(lab, link) && next.router) {
     next.router = { ...next.router, wanIp: null };
@@ -192,15 +192,15 @@ export function disconnectCable(lab: Lab, linkId: string): Result<Lab> {
 
 export function setEthernetEnabled(lab: Lab, deviceId: string, enabled: boolean): Result<Lab> {
   const device = getDevice(lab, deviceId);
-  if (!device) return fail('Ese dispositivo ya no existe.');
-  if (portsOf(device).length === 0) return fail('Este dispositivo no tiene puerto Ethernet.');
+  if (!device) return fail('device-missing', 'Ese dispositivo ya no existe.');
+  if (portsOf(device).length === 0) return fail('no-ethernet', 'Este dispositivo no tiene puerto Ethernet.');
   return ok(replaceDevice(lab, deviceId, { ...device, ethernetEnabled: enabled }));
 }
 
 export function setWifiEnabled(lab: Lab, deviceId: string, enabled: boolean): Result<Lab> {
   const device = getDevice(lab, deviceId);
-  if (!device) return fail('Ese dispositivo ya no existe.');
-  if (!CAPABILITIES[device.kind].wifi) return fail('Este dispositivo no tiene WiFi.');
+  if (!device) return fail('device-missing', 'Ese dispositivo ya no existe.');
+  if (!CAPABILITIES[device.kind].wifi) return fail('no-wifi', 'Este dispositivo no tiene WiFi.');
 
   const withFlag = replaceDevice(lab, deviceId, {
     ...device,
@@ -221,36 +221,51 @@ export function setWifiEnabled(lab: Lab, deviceId: string, enabled: boolean): Re
 
 export function connectWifi(lab: Lab, deviceId: string, associated: boolean): Result<Lab> {
   const device = getDevice(lab, deviceId);
-  if (!device) return fail('Ese dispositivo ya no existe.');
-  if (!CAPABILITIES[device.kind].wifi) return fail('Este dispositivo no tiene WiFi.');
+  if (!device) return fail('device-missing', 'Ese dispositivo ya no existe.');
+  if (!CAPABILITIES[device.kind].wifi) return fail('no-wifi', 'Este dispositivo no tiene WiFi.');
   if (associated) {
     const router = lab.router ? getDevice(lab, lab.router.deviceId) : undefined;
-    if (!router) return fail('No hay ninguna red WiFi disponible.');
-    if (!router.wifiEnabled) return fail('El WiFi del router está desactivado.');
-    if (!device.wifiEnabled) return fail('La conexión WiFi está desactivada en este dispositivo.');
+    if (!router) return fail('no-wifi-network', 'No hay ninguna red WiFi disponible.');
+    if (!router.wifiEnabled) return fail('router-wifi-off', 'El WiFi del router está desactivado.');
+    if (!device.wifiEnabled) return fail('wifi-disabled', 'La conexión WiFi está desactivada en este dispositivo.');
   }
   return ok(replaceDevice(lab, deviceId, { ...device, wifiAssociated: associated }));
 }
 
 export function setRouterLanIp(lab: Lab, lanIp: string): Result<Lab> {
-  if (!lab.router) return fail('Todavía no hay ningún router en el laboratorio.');
-  if (!isIpv4(lanIp)) return fail('Escribe una dirección IPv4 válida, por ejemplo 192.168.1.1.');
-  if (!isHostIp(lanIp)) return fail('La dirección del router no puede terminar en .0 ni en .255.');
+  if (!lab.router) return fail('no-router-yet', 'Todavía no hay ningún router en el laboratorio.');
+  if (!isIpv4(lanIp)) {
+    return fail('invalid-ipv4', 'Escribe una dirección IPv4 válida, por ejemplo 192.168.1.1.', { ip: lanIp });
+  }
+  if (!isHostIp(lanIp)) {
+    return fail('router-ip-broadcast', 'La dirección del router no puede terminar en .0 ni en .255.', { ip: lanIp });
+  }
   return ok({ ...lab, router: { ...lab.router, lanIp } });
 }
 
 export function setDhcpRange(lab: Lab, start: number, end: number): Result<Lab> {
-  if (!lab.router) return fail('Todavía no hay ningún router en el laboratorio.');
-  const network = networkOf(lab.router.lanIp) ?? 'la subred del router';
+  if (!lab.router) return fail('no-router-yet', 'Todavía no hay ningún router en el laboratorio.');
+  const rawNetwork = networkOf(lab.router.lanIp);
+  const network = rawNetwork ?? 'la subred del router';
   const isHostNumber = (value: number) => Number.isInteger(value) && value >= 2 && value <= 254;
   if (!isHostNumber(start) || !isHostNumber(end)) {
-    return fail(`El rango debe estar dentro de la subred ${network}.`);
+    return fail(
+      'dhcp-range-outside-subnet',
+      `El rango debe estar dentro de la subred ${network}.`,
+      rawNetwork === null ? undefined : { network: rawNetwork, start, end },
+    );
   }
   const routerHost = hostOctet(lab.router.lanIp);
   if (routerHost !== null && start <= routerHost && routerHost <= end) {
-    return fail(`El rango no puede incluir la dirección del router (${lab.router.lanIp}).`);
+    return fail(
+      'dhcp-range-includes-router',
+      `El rango no puede incluir la dirección del router (${lab.router.lanIp}).`,
+      { routerIp: lab.router.lanIp, start, end },
+    );
   }
-  if (start > end) return fail('La dirección final debe ser mayor o igual que la inicial.');
+  if (start > end) {
+    return fail('dhcp-range-inverted', 'La dirección final debe ser mayor o igual que la inicial.', { start, end });
+  }
   return ok({ ...lab, router: { ...lab.router, dhcpStart: start, dhcpEnd: end } });
 }
 
@@ -262,16 +277,22 @@ export interface AddressingPatch {
 
 export function setAddressing(lab: Lab, deviceId: string, patch: AddressingPatch): Result<Lab> {
   const device = getDevice(lab, deviceId);
-  if (!device) return fail('Ese dispositivo ya no existe.');
-  if (!CAPABILITIES[device.kind].addressable) return fail('Este dispositivo no tiene dirección IP.');
+  if (!device) return fail('device-missing', 'Ese dispositivo ya no existe.');
+  if (!CAPABILITIES[device.kind].addressable) {
+    return fail('address-not-assignable', 'Este dispositivo no tiene dirección IP.');
+  }
 
   const manualIp = patch.manualIp ?? null;
   const manualGateway = patch.manualGateway ?? null;
   if (manualIp !== null && !isIpv4(manualIp)) {
-    return fail('Escribe una dirección IPv4 válida, por ejemplo 192.168.1.20.');
+    return fail('invalid-client-ipv4', 'Escribe una dirección IPv4 válida, por ejemplo 192.168.1.20.', {
+      ip: manualIp,
+    });
   }
   if (manualGateway !== null && !isIpv4(manualGateway)) {
-    return fail('Escribe una puerta de enlace válida, por ejemplo 192.168.1.1.');
+    return fail('invalid-gateway', 'Escribe una puerta de enlace válida, por ejemplo 192.168.1.1.', {
+      gateway: manualGateway,
+    });
   }
 
   return ok(

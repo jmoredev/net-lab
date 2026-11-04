@@ -52,14 +52,66 @@ export interface Lab {
   seq: number;
 }
 
-export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
+/** Raw values a message interpolates, so the UI can build the sentence in any language. */
+export type MessageParams = Record<string, string | number>;
+
+/** Codes for the eleven rows of the diagnosis panel. */
+export type DiagnosticMessageCode =
+  | 'ethernet-disabled'
+  | 'wifi-disabled'
+  | 'not-connected'
+  | 'router-wifi-off'
+  | 'dead-end-cable'
+  | 'no-lease'
+  | 'ip-outside-subnet'
+  | 'ip-duplicate'
+  | 'gateway-wrong'
+  | 'router-no-wan'
+  | 'router-no-wan-address';
+
+/** Codes for the validation errors the lab operations return. */
+export type ValidationMessageCode =
+  | 'internet-not-addable'
+  | 'router-already-exists'
+  | 'name-empty'
+  | 'device-missing'
+  | 'name-taken'
+  | 'internet-not-deletable'
+  | 'self-connection'
+  | 'phone-no-cable'
+  | 'port-missing'
+  | 'port-occupied'
+  | 'wan-not-router'
+  | 'wan-only-internet'
+  | 'internet-only-wan'
+  | 'cable-missing'
+  | 'no-ethernet'
+  | 'no-wifi'
+  | 'no-wifi-network'
+  | 'no-router-yet'
+  | 'invalid-ipv4'
+  | 'router-ip-broadcast'
+  | 'dhcp-range-outside-subnet'
+  | 'dhcp-range-includes-router'
+  | 'dhcp-range-inverted'
+  | 'invalid-client-ipv4'
+  | 'invalid-gateway'
+  | 'address-not-assignable';
+
+/** Every message the domain can produce, identified by a stable kebab-case code. */
+export type DomainMessageCode = ValidationMessageCode | DiagnosticMessageCode;
+
+export type Result<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: string; code: DomainMessageCode; params?: MessageParams };
 
 export function ok<T>(value: T): Result<T> {
   return { ok: true, value };
 }
 
-export function fail<T>(error: string): Result<T> {
-  return { ok: false, error };
+/** `error` keeps the Spanish sentence as an internal fallback; `code` + `params` are the truth. */
+export function fail<T>(code: DomainMessageCode, error: string, params?: MessageParams): Result<T> {
+  return params === undefined ? { ok: false, error, code } : { ok: false, error, code, params };
 }
 
 export interface Capabilities {
