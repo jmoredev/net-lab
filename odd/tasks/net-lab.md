@@ -145,6 +145,9 @@ Reglas de comportamiento:
 **S34 — Estado del WiFi por color.** La marca de WiFi de cada dispositivo usa tres colores: verde cuando está conectado (en el router, cuando emite; en un cliente, cuando está asociado), gris cuando el WiFi está desactivado, y rojo cuando está activado pero sin conectar.
 > «Cuando el wifi esté conectado, que aparezca la señal en verde, desactivado en gris y sin conectar en rojo»
 
+**S35 — Atribución de construcción.** La aplicación muestra en su cabecera el distintivo `Built with Gentle-AI`, enlazado a `https://github.com/Gentleman-Programming/gentle-ai`. Es el único recurso externo que carga la aplicación: si la imagen no está disponible, el texto alternativo mantiene visible la atribución y el enlace sigue funcionando.
+> «Quiero que aparezca que ha sido construido con gentle-ai»
+
 ### G. Estado inicial y ejemplo
 
 **S24 — Laboratorio vacío de base, ejemplo cargable.** Al abrir la aplicación el lienzo está vacío: no hay router, ni switch, ni equipos; solo la paleta y el nodo Internet de S27. Un botón `Cargar ejemplo` inserta un laboratorio preconfigurado y funcional; `Vaciar laboratorio` vuelve al estado inicial, pidiendo confirmación si hay dispositivos.
@@ -293,7 +296,8 @@ Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 | T10 | Despliegue en GitHub Pages y README de aula | S1, S2 | inline | pendiente |
 | T11 | Persistencia del laboratorio en `localStorage` con descarte de datos inválidos | S31 | inline | pendiente |
 | T12 | Puertos visibles con nombre, cable arrastrando de puerto a puerto, selección y borrado de cables, borrado de dispositivo sobre la paleta y vuelta en otro color | S11, S13, S23, S32, S33 | worker | `924de83` |
-| T13 | Envío por los cables y tramos WiFi discontinuos, tres colores de WiFi y arreglo del aviso de Fast Refresh | S23, S26, S34 | worker | pendiente |
+| T13 | Envío por los cables y tramos WiFi discontinuos, tres colores de WiFi y arreglo del aviso de Fast Refresh | S23, S26, S34 | worker | `26d267c` |
+| T14 | Atribución `Built with Gentle-AI` en la cabecera y en el README | S35 | inline | pendiente |
 
 ## Log
 
@@ -371,6 +375,17 @@ Efecto de L6: nuevas S30 (NAT en dos frases con analogía) y S31 (persistencia e
 **L7 — Estado del trabajo.** Especificación cerrada (S1–S31, D1–D16). T2 y T3 implementados: scaffold Vite + React + TS, motor de dominio con 60 tests en verde y build de 69 KB gzip. Siguiente: T4.
 
 **L8 — Capa de UI entregada (T4–T7, commit `f3b6ac4`).** Paleta, lienzo SVG, panel del dispositivo, analogías y estilos. Verificación: `tsc --noEmit` limpio, 75 tests en verde, build de 79 KB gzip. Tres tensiones de la especificación detectadas al implementar y resueltas acá: S10 vs S26.5 (la marca de WiFi se admite en el lienzo), S27 (el nodo Internet se puede pulsar para ver información de lectura, sin configuración) y S12 (las dos acciones de conexión se ofrecen a la vez, sin diálogo previo).
+
+**L13 — Repositorio y atribución (texto literal):**
+
+```
+El repositorio es el siguiente: git@github.com:jmoredev/net-lab.git
+Quiero que aparezca que ha sido construido con gentle-ai: <a href="https://github.com/Gentleman-Programming/gentle-ai">
+  <img width="220" src="https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/docs/assets/brand/built-with-gentle-ai.png" alt="Built with Gentle-AI" />
+</a>
+```
+
+Efecto de L13: nueva S35 (atribución en la cabecera) y tarea T14. El remoto `origin` queda configurado hacia ese repositorio; el `base` relativo de Vite ya funciona bajo el subpath `/net-lab/` de GitHub Pages.
 
 **L12 — Cambios de envío y WiFi del usuario (texto literal):**
 
