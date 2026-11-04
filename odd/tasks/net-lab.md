@@ -223,6 +223,10 @@ Un sobremesa sin WiFi es discutible, pero hace el ejercicio más claro; si prefi
 
 **D16 — Sistema visual mínimo. *(aprobada)*** Neutros + un acento + dos colores de estado, tipografía de sistema, densidad baja, controles grandes. Es la aterrización de S26: si un elemento no informa ni se acciona, no se dibuja.
 
+**D17 — Un solo router por laboratorio. *(derivada al implementar — pendiente de OK)*** Dos routers obligan a enrutar entre subredes, que está fuera de alcance: el modelo quedaría a medias. La paleta no ofrece un segundo router y responde `Ya hay un router en el laboratorio.`
+
+**D18 — Puerta de enlace manual en modo manual. *(derivada al implementar — pendiente de OK)*** El motivo 8 de S22 solo es alcanzable si el alumnado puede escribir una puerta de enlace distinta de la del router, así que en modo manual el panel la expone (por defecto, la del router). La fila 10 de S22 (router con cable WAN pero sin dirección) es una red de seguridad que no debería darse nunca en un estado coherente; se mantiene para que el modelo sea total.
+
 ## Analogías (contenido didáctico)
 
 Texto de S5, en español de España. Aprobado con D15: es el material que leen los alumnos y una fila se puede corregir cuando se implemente.
@@ -256,13 +260,13 @@ Las tres quedaron respondidas en L6 y ya están recogidas en los requisitos.
 
 ## Tareas
 
-Las rutas son tentativas: se reevalúan al arrancar cada tarea. No hay commits todavía: el repositorio aún no está inicializado.
+Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 
 | ID | Tarea | Specs | Ruta | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | Especificación v1.1 y revisión | — | inline | — |
-| T2 | Scaffold: Vite + React + TS, estructura, build relativo para Pages | S1, S2 | inline | pendiente |
-| T3 | Motor de dominio: dispositivos, puertos, cables, subred, DHCP, diagnóstico | S12–S22 | inline | pendiente |
+| T1 | Especificación v1.3 y revisión | — | inline | `b3935b2` |
+| T2 | Scaffold: Vite + React + TS, estructura, build relativo para Pages | S1, S2 | inline | `9f022fc` |
+| T3 | Motor de dominio: dispositivos, puertos, cables, subred, DHCP, diagnóstico | S12–S22 | inline | `5f185e6` |
 | T4 | Lienzo SVG: paleta con switch, arrastre, renombrar, eliminar, Internet fijo, cables, clic y hover | S6–S11, S24–S27, S29 | worker | pendiente |
 | T5 | Paneles de configuración: direccionamiento, rango DHCP, NAT resumido y validaciones | S17–S21, S25, S28, S30 | worker | pendiente |
 | T6 | Ayuda contextual: términos técnicos con sus analogías | S5 | inline | pendiente |
