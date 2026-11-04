@@ -298,6 +298,7 @@ Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 | T12 | Puertos visibles con nombre, cable arrastrando de puerto a puerto, selección y borrado de cables, borrado de dispositivo sobre la paleta y vuelta en otro color | S11, S13, S23, S32, S33 | worker | `924de83` |
 | T13 | Envío por los cables y tramos WiFi discontinuos, tres colores de WiFi y arreglo del aviso de Fast Refresh | S23, S26, S34 | worker | `26d267c` |
 | T14 | Atribución `Built with Gentle-AI` en el README del repositorio | S35 | inline | `5376046` |
+| T15 | Publicación en GitHub Pages: rama `main`, entorno `github-pages` y verificación de S2 en producción | S1, S2 | inline | ver L15 |
 
 ## Log
 
@@ -375,6 +376,12 @@ Efecto de L6: nuevas S30 (NAT en dos frases con analogía) y S31 (persistencia e
 **L7 — Estado del trabajo.** Especificación cerrada (S1–S31, D1–D16). T2 y T3 implementados: scaffold Vite + React + TS, motor de dominio con 60 tests en verde y build de 69 KB gzip. Siguiente: T4.
 
 **L8 — Capa de UI entregada (T4–T7, commit `f3b6ac4`).** Paleta, lienzo SVG, panel del dispositivo, analogías y estilos. Verificación: `tsc --noEmit` limpio, 75 tests en verde, build de 79 KB gzip. Tres tensiones de la especificación detectadas al implementar y resueltas acá: S10 vs S26.5 (la marca de WiFi se admite en el lienzo), S27 (el nodo Internet se puede pulsar para ver información de lectura, sin configuración) y S12 (las dos acciones de conexión se ofrecen a la vez, sin diálogo previo).
+
+**L15 — Publicación en GitHub Pages.** El primer push creó `feat/net-lab` como única rama, y GitHub la tomó como predeterminada, así que no existía `main` desde la que mergear. Resolución: `main` se creó por la API sobre `04d85bc`, se cambió la rama por defecto, se borró `feat/net-lab` del remoto y se dejó el repositorio con una sola rama. El shell del agente no tiene la clave SSH del usuario, así que la publicación se hizo con el token de `gh`.
+
+Dos fallos de despliegue antes de quedar en verde, ambos del entorno y no del código: el primero por habilitar Pages y lanzar el workflow en el mismo minuto; el segundo porque el entorno `github-pages` tenía una política que solo permitía `feat/net-lab` (`Branch "main" is not allowed to deploy to github-pages`). Se agregó `main` a las políticas del entorno y se borró la entrada obsoleta.
+
+Verificación en producción, no solo el verde del workflow: `https://jmoredev.github.io/net-lab/` responde 200, el `<title>` es el de la aplicación, y el HTML publicado referencia `./assets/...` con ambos recursos en 200, que es la prueba real de S2 bajo el subpath.
 
 **L14 — v1 cerrada (commit `cbe9ab5`).** T9 laboratorio de ejemplo, T10 persistencia y T11 despliegue entregados. Verificación: `tsc` limpio, 124 tests en verde (102 + 22 nuevos), 83,4 KB gzip. La especificación S1–S35 queda satisfecha salvo un detalle conocido y anotado en L9 (el campo de rango DHCP vacío muestra el error de subred en vez del de rango). Queda por delante la decisión del usuario de publicar: `main` aún no existe y el primer push lo abre.
 
