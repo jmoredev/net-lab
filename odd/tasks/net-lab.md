@@ -300,6 +300,8 @@ Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 | T14 | Atribución `Built with Gentle-AI` en el README del repositorio | S35 | inline | `5376046` |
 | T15 | Publicación en GitHub Pages: rama `main`, entorno `github-pages` y verificación de S2 en producción | S1, S2 | inline | ver L15 |
 
+**Convención de entrega (D19):** todo cambio entra en `main` por rama y pull request, nunca por push directo; el servidor rechaza el push directo con `fatal error in commit_refs_rules`.
+
 ## Log
 
 **L1 — Pedido original del usuario (texto literal):**
@@ -376,6 +378,14 @@ Efecto de L6: nuevas S30 (NAT en dos frases con analogía) y S31 (persistencia e
 **L7 — Estado del trabajo.** Especificación cerrada (S1–S31, D1–D16). T2 y T3 implementados: scaffold Vite + React + TS, motor de dominio con 60 tests en verde y build de 69 KB gzip. Siguiente: T4.
 
 **L8 — Capa de UI entregada (T4–T7, commit `f3b6ac4`).** Paleta, lienzo SVG, panel del dispositivo, analogías y estilos. Verificación: `tsc --noEmit` limpio, 75 tests en verde, build de 79 KB gzip. Tres tensiones de la especificación detectadas al implementar y resueltas acá: S10 vs S26.5 (la marca de WiFi se admite en el lienzo), S27 (el nodo Internet se puede pulsar para ver información de lectura, sin configuración) y S12 (las dos acciones de conexión se ofrecen a la vez, sin diálogo previo).
+
+**L16 — Flujo de entrega decidido por el usuario (texto literal):**
+
+```
+No, hacemos rama y creamos PR para merge en main siempre
+```
+
+Efecto de L16: queda fijada la convención D19 (rama + PR siempre) y se documenta en el `README.md`. El cambio que registra esta decisión entra por el propio flujo que describe.
 
 **L15 — Publicación en GitHub Pages.** El primer push creó `feat/net-lab` como única rama, y GitHub la tomó como predeterminada, así que no existía `main` desde la que mergear. Resolución: `main` se creó por la API sobre `04d85bc`, se cambió la rama por defecto, se borró `feat/net-lab` del remoto y se dejó el repositorio con una sola rama. El shell del agente no tiene la clave SSH del usuario, así que la publicación se hizo con el token de `gh`.
 

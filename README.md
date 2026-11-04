@@ -25,6 +25,20 @@ Cada `push` a `main` vuelve a publicar la versión de esa rama, y también se pu
 
 El `base: './'` de [`vite.config.ts`](vite.config.ts) es lo que hace que el sitio funcione servido desde el subdirectorio `/net-lab/`: las rutas del build son relativas, así que el mismo `dist/` sirve bajo cualquier subcarpeta.
 
+## Flujo de trabajo
+
+`main` no acepta pushes directos: el servidor los rechaza. Todo cambio entra por rama y pull request, sin excepciones.
+
+```
+git checkout -b feat/lo-que-sea
+# ... cambios, tests en verde ...
+git push -u origin feat/lo-que-sea
+gh pr create --base main --head feat/lo-que-sea
+gh pr merge --merge --delete-branch
+```
+
+El workflow de Pages corre los tests en cada push a `main`, así que un PR mergeado no se publica si la suite está en rojo.
+
 ## Documentación
 
 - Especificación verificable, decisiones y bitácora: [`odd/tasks/net-lab.md`](odd/tasks/net-lab.md)
