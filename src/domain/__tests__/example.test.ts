@@ -61,8 +61,8 @@ describe('example lab: S24 composition', () => {
     const lab = createExampleLab();
     const wireless = clientsOf(lab).filter((client) => !touches(lab, client.id));
 
-    expect(wireless.map(kindLabel)).toEqual(['Portátil', 'Móvil']);
-    expect(wireless.map((device) => device.name)).toEqual(['Portátil-2', 'Móvil-1']);
+    expect(wireless.map(kindLabel)).toEqual(['Laptop', 'Smartphone']);
+    expect(wireless.map((device) => device.name)).toEqual(['Laptop-2', 'Smartphone-1']);
     for (const client of wireless) {
       expect(client.wifiAssociated).toBe(true);
     }
@@ -73,7 +73,7 @@ describe('example lab: S24 composition', () => {
     const names = lab.devices.map((device) => device.name);
     expect(new Set(names).size).toBe(lab.devices.length);
 
-    const wiredLaptop = lab.devices.find((device) => device.name === 'Portátil-1');
+    const wiredLaptop = lab.devices.find((device) => device.name === 'Laptop-1');
     const netSwitch = lab.devices.find((device) => device.kind === 'switch');
     expect(wiredLaptop).toBeDefined();
     expect(netSwitch).toBeDefined();
@@ -118,8 +118,8 @@ describe('example lab: S24 layout', () => {
     const byName = (name: string): Device => lab.devices.find((device) => device.name === name) as Device;
 
     expect(byName('Router').position.y).toBeLessThan(byName('Switch-1').position.y);
-    expect(byName('Portátil-1').position.x).toBeLessThan(byName('Portátil-2').position.x);
-    expect(byName('Portátil-1').position.x).toBeLessThan(byName('Móvil-1').position.x);
-    expect(byName('Portátil-1').position.y).toBeGreaterThan(byName('Switch-1').position.y);
+    expect(byName('Laptop-1').position.x).toBeLessThan(byName('Laptop-2').position.x);
+    expect(byName('Laptop-1').position.x).toBeLessThan(byName('Smartphone-1').position.x);
+    expect(byName('Laptop-1').position.y).toBeGreaterThan(byName('Switch-1').position.y);
   });
 });

@@ -124,8 +124,8 @@ export interface Capabilities {
 export const CAPABILITIES: Record<DeviceKind, Capabilities> = {
   router: { ports: ['wan', 'lan1', 'lan2', 'lan3', 'lan4'], wifi: true, addressable: false, label: 'Router' },
   switch: { ports: ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'], wifi: false, addressable: false, label: 'Switch' },
-  laptop: { ports: ['eth'], wifi: true, addressable: true, label: 'Portátil' },
-  desktop: { ports: ['eth'], wifi: false, addressable: true, label: 'Sobremesa' },
-  phone: { ports: [], wifi: true, addressable: true, label: 'Móvil' },
+  laptop: { ports: ['eth'], wifi: true, addressable: true, label: 'Laptop' },
+  desktop: { ports: ['eth'], wifi: false, addressable: true, label: 'PC' },
+  phone: { ports: [], wifi: true, addressable: true, label: 'Smartphone' },
   internet: { ports: ['wan'], wifi: false, addressable: false, label: 'Internet' },
 };

@@ -82,7 +82,7 @@ describe('diagnostics: reasons in priority order', () => {
     s.cable(laptop, 'eth', desktop, 'eth');
     expect(s.status(laptop).reason).toMatchObject({
       code: 'dead-end-cable',
-      text: 'Este cable va a Sobremesa-1, que no da salida a Internet.',
+      text: 'Este cable va a PC-1, que no da salida a Internet.',
     });
   });
 
@@ -109,7 +109,7 @@ describe('diagnostics: reasons in priority order', () => {
     s.manual(second, '192.168.1.50');
     expect(s.status(second).reason).toMatchObject({
       code: 'ip-duplicate',
-      text: 'La IP 192.168.1.50 ya está en uso por Portátil-1.',
+      text: 'La IP 192.168.1.50 ya está en uso por Laptop-1.',
     });
   });
 

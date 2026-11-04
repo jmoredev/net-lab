@@ -32,7 +32,7 @@ async function addDevice(user: User, label: string): Promise<void> {
 /** Router and laptop joined by cable from the panel, which lists the free ports (S13). */
 async function cableRouterAndLaptop(user: User): Promise<void> {
   await addDevice(user, 'Router');
-  await addDevice(user, 'Portátil');
+  await addDevice(user, 'Laptop');
   await user.click(screen.getByRole('button', { name: 'LAN 1' }));
 }
 
@@ -65,7 +65,7 @@ describe('the language switcher', () => {
     renderApp();
 
     expect(screen.getByRole('button', { name: 'Cargar ejemplo' })).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Portátil' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Laptop' })).not.toBeNull();
     expect(document.documentElement.lang).toBe('es');
     expect(document.title).toBe(ES['app.title']);
   });
@@ -129,7 +129,7 @@ describe('validation messages in English', () => {
   it('shows the duplicate-name banner in English after the switch', async () => {
     const { user } = renderApp();
     await addDevice(user, 'Router');
-    await addDevice(user, 'Portátil');
+    await addDevice(user, 'Laptop');
     await switchLanguage(user, 'ENG');
 
     const nameField = screen.getByLabelText('Name');

@@ -155,7 +155,7 @@ Reglas de comportamiento:
 
 Composición propuesta del ejemplo: router con WiFi activo y `192.168.1.1`, cable WAN al nodo Internet, switch en el puerto LAN 1, un portátil por cable al switch, un portátil y un móvil por WiFi, todos con IP por DHCP y todos con salida a Internet.
 
-**S25 — Renombrar dispositivos.** Todo dispositivo añadido tiene nombre editable, que se muestra en el lienzo y en los motivos de S22. Nombres por defecto: `Router`, `Switch-1`, `Portátil-1`, `Sobremesa-1`, `Móvil-1`, con numeración creciente. Se rechazan el nombre vacío y el nombre repetido, con estos textos exactos: `El nombre no puede estar vacío.` y `Ya hay un dispositivo llamado {nombre}.`
+**S25 — Renombrar dispositivos.** Todo dispositivo añadido tiene nombre editable, que se muestra en el lienzo y en los motivos de S22. Nombres por defecto: `Router`, `Switch-1`, `Laptop-1`, `PC-1`, `Smartphone-1`, con numeración creciente. Son términos neutrales, iguales en los dos idiomas (D25). Se rechazan el nombre vacío y el nombre repetido, con estos textos exactos: `El nombre no puede estar vacío.` y `Ya hay un dispositivo llamado {nombre}.`
 > «Se les puede cambiar el nombre al dispositivo para identificarlos mejor en el canvas»
 
 **S26 — Interfaz clara y limpia, sin distracciones.** El lienzo es la superficie dominante y el alumnado no ve nada que no sea accionable o informativo. Restricciones verificables:
@@ -214,9 +214,9 @@ D1–D3 se aprobaron en la revisión 2; D4–D16 en la revisión 3. Lo que sigue
 | --- | --- | --- | --- | --- |
 | Router | 1 WAN + 4 LAN | sí, on/off | 5 | fija la subred, WAN por DHCP |
 | Switch | 8 | no | 8 | ninguna |
-| Portátil | 1 | sí | 1 | DHCP o manual |
-| Sobremesa | 1 | no | 1 | DHCP o manual |
-| Móvil | no | sí | 0 | DHCP o manual |
+| Laptop | 1 | sí | 1 | DHCP o manual |
+| PC | 1 | no | 1 | DHCP o manual |
+| Smartphone | no | sí | 0 | DHCP o manual |
 
 Un sobremesa sin WiFi es discutible, pero hace el ejercicio más claro; si prefieres que también tenga, es un cambio de una fila.
 

@@ -184,7 +184,7 @@ function cableHitTarget(container: HTMLElement): Element {
 /** Router and laptop cabled through the panel, which lists the free ports (S13). */
 async function cableRouterAndLaptop(user: User): Promise<void> {
   await addDevice(user, 'Router');
-  await addDevice(user, 'Portátil');
+  await addDevice(user, 'Laptop');
   await user.click(screen.getByRole('button', { name: 'LAN 1' }));
 }
 
@@ -197,15 +197,15 @@ describe('adding a device', () => {
     const { user } = renderApp();
     expect(screen.getByText('El laboratorio está vacío.')).not.toBeNull();
 
-    await user.click(screen.getByRole('button', { name: 'Portátil' }));
+    await user.click(screen.getByRole('button', { name: 'Laptop' }));
 
     // The empty state is gone and the device is drawn with the default name of S25.
     expect(screen.queryByText('El laboratorio está vacío.')).toBeNull();
-    expect(canvasCaption('Portátil-1')).not.toBeNull();
+    expect(canvasCaption('Laptop-1')).not.toBeNull();
 
     const panel = screen.getByRole('complementary', { name: 'Panel del dispositivo seleccionado' });
-    expect(panel.textContent).toContain('Portátil');
-    expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Portátil-1');
+    expect(panel.textContent).toContain('Laptop');
+    expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Laptop-1');
   });
 
   it('refuses a second router and says so on the palette (D17)', async () => {
@@ -230,27 +230,27 @@ describe('adding a device', () => {
 describe('renaming a device', () => {
   it('shows the new name on the canvas after Enter in the name field', async () => {
     const { user } = renderApp();
-    await addDevice(user, 'Portátil');
+    await addDevice(user, 'Laptop');
 
     const nameField = screen.getByLabelText('Nombre');
     await user.clear(nameField);
     await user.type(nameField, 'Equipo de Ana{Enter}');
 
     expect(canvasCaption('Equipo de Ana')).not.toBeNull();
-    expect(screen.queryByText('Portátil-1')).toBeNull();
+    expect(screen.queryByText('Laptop-1')).toBeNull();
   });
 
   it('rejects an empty name with the exact message and keeps the old one', async () => {
     const { user } = renderApp();
-    await addDevice(user, 'Portátil');
+    await addDevice(user, 'Laptop');
 
     const nameField = screen.getByLabelText('Nombre');
     await user.clear(nameField);
     await user.type(nameField, '{Enter}');
 
     expect(screen.getByText('El nombre no puede estar vacío.')).not.toBeNull();
-    expect(canvasCaption('Portátil-1')).not.toBeNull();
-    expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Portátil-1');
+    expect(canvasCaption('Laptop-1')).not.toBeNull();
+    expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Laptop-1');
   });
 });
 
@@ -321,7 +321,7 @@ describe('WiFi states', () => {
   it('goes from the red mark to green when the phone joins and back to red when the router turns WiFi off', async () => {
     const { user } = renderApp();
     await addDevice(user, 'Router');
-    await addDevice(user, 'Móvil');
+    await addDevice(user, 'Smartphone');
 
     // The phone has WiFi on but has not joined yet: red mark. The router emits: green mark.
     expect(wifiMarks('WiFi sin conectar')).toHaveLength(1);
@@ -352,15 +352,15 @@ describe('cabling from port to port', () => {
   it('creates one cable and shows both ports as occupied in the panel', async () => {
     const { user } = renderApp();
     await addDevice(user, 'Router');
-    await addDevice(user, 'Portátil');
+    await addDevice(user, 'Laptop');
 
-    dragPortToPort(portDot('Portátil-1, Ethernet'), portDot('Router, LAN 1'));
+    dragPortToPort(portDot('Laptop-1, Ethernet'), portDot('Router, LAN 1'));
 
     // The laptop panel lists its only port as taken by the router.
     expect(screen.getAllByText('Ocupado por Router')).toHaveLength(1);
 
     await clickDevice(user, 'Router · 192.168.1.1');
-    expect(screen.getAllByText('Ocupado por Portátil-1')).toHaveLength(1);
+    expect(screen.getAllByText('Ocupado por Laptop-1')).toHaveLength(1);
     // WAN, LAN 2, LAN 3 and LAN 4 are still free.
     expect(screen.getAllByText('Libre')).toHaveLength(4);
   });
@@ -368,17 +368,17 @@ describe('cabling from port to port', () => {
   it('refuses to start a second cable from a port that is already taken', async () => {
     const { user } = renderApp();
     await addDevice(user, 'Router');
-    await addDevice(user, 'Portátil');
-    dragPortToPort(portDot('Portátil-1, Ethernet'), portDot('Router, LAN 1'));
+    await addDevice(user, 'Laptop');
+    dragPortToPort(portDot('Laptop-1, Ethernet'), portDot('Router, LAN 1'));
 
-    dragPortToPort(portDot('Portátil-1, Ethernet'), portDot('Router, LAN 2'));
+    dragPortToPort(portDot('Laptop-1, Ethernet'), portDot('Router, LAN 2'));
 
     // No cable was created and no reason was raised: the port is simply not a source.
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.getAllByText('Ocupado por Router')).toHaveLength(1);
 
     await clickDevice(user, 'Router · 192.168.1.1');
-    expect(screen.getAllByText('Ocupado por Portátil-1')).toHaveLength(1);
+    expect(screen.getAllByText('Ocupado por Laptop-1')).toHaveLength(1);
     expect(screen.getAllByText('Libre')).toHaveLength(4);
   });
 });
@@ -391,8 +391,8 @@ describe('deleting a cable with the keyboard', () => {
   it('removes the selected cable with Supr and keeps it when the key comes from a text field', async () => {
     const { user, container } = renderApp();
     await addDevice(user, 'Router');
-    await addDevice(user, 'Portátil');
-    dragPortToPort(portDot('Portátil-1, Ethernet'), portDot('Router, LAN 1'));
+    await addDevice(user, 'Laptop');
+    dragPortToPort(portDot('Laptop-1, Ethernet'), portDot('Router, LAN 1'));
     expect(screen.getAllByText('Ocupado por Router')).toHaveLength(1);
 
     // Clicking the cable selects it and shows its delete badge.
@@ -406,7 +406,7 @@ describe('deleting a cable with the keyboard', () => {
     expect(screen.queryByText(/^Ocupado por/)).toBeNull();
 
     // A second cable, selected, must survive a Delete typed into a text field.
-    dragPortToPort(portDot('Portátil-1, Ethernet'), portDot('Router, LAN 1'));
+    dragPortToPort(portDot('Laptop-1, Ethernet'), portDot('Router, LAN 1'));
     await user.click(cableHitTarget(container));
     expect(screen.getByRole('button', { name: 'Eliminar el cable seleccionado' })).not.toBeNull();
 
@@ -421,8 +421,8 @@ describe('deleting a cable with the keyboard', () => {
   it('removes the selected cable with its delete badge too (S33)', async () => {
     const { user, container } = renderApp();
     await addDevice(user, 'Router');
-    await addDevice(user, 'Portátil');
-    dragPortToPort(portDot('Portátil-1, Ethernet'), portDot('Router, LAN 1'));
+    await addDevice(user, 'Laptop');
+    dragPortToPort(portDot('Laptop-1, Ethernet'), portDot('Router, LAN 1'));
 
     await user.click(cableHitTarget(container));
     await user.click(screen.getByRole('button', { name: 'Eliminar el cable seleccionado' }));
@@ -440,10 +440,10 @@ describe('deleting a cable with the keyboard', () => {
 describe('deleting a device on the palette', () => {
   it('removes a laptop dragged back to the palette and leaves the Internet node alone', async () => {
     const { user } = renderApp();
-    await addDevice(user, 'Portátil');
+    await addDevice(user, 'Laptop');
 
     const palette = screen.getByRole('complementary', { name: 'Paleta de dispositivos' });
-    const laptop = canvasCaption('Portátil-1');
+    const laptop = canvasCaption('Laptop-1');
     const start = { x: 200, y: 260 };
 
     pointer('pointerDown', laptop, start);
@@ -454,7 +454,7 @@ describe('deleting a device on the palette', () => {
     elementUnderPointer = palette;
     pointer('pointerUp', laptop, { x: 240, y: 320 });
 
-    expect(screen.queryByText('Portátil-1')).toBeNull();
+    expect(screen.queryByText('Laptop-1')).toBeNull();
     expect(screen.getByText('El laboratorio está vacío.')).not.toBeNull();
     // Dropping a device on the palette removes it without asking anything (S11).
     expect(confirmSpy).not.toHaveBeenCalled();
@@ -475,16 +475,16 @@ describe('deleting a device on the palette', () => {
    */
   it('keeps a device when nothing is under the pointer on release', async () => {
     const { user } = renderApp();
-    await addDevice(user, 'Portátil');
+    await addDevice(user, 'Laptop');
 
-    const laptop = canvasCaption('Portátil-1');
+    const laptop = canvasCaption('Laptop-1');
     pointer('pointerDown', laptop, { x: 200, y: 260 });
     pointer('pointerMove', laptop, { x: 220, y: 300 });
 
     elementUnderPointer = null;
     pointer('pointerUp', laptop, { x: 240, y: 320 });
 
-    expect(screen.queryByText('Portátil-1')).not.toBeNull();
+    expect(screen.queryByText('Laptop-1')).not.toBeNull();
   });
 
   /**
@@ -494,7 +494,7 @@ describe('deleting a device on the palette', () => {
    */
   it('explains on its panel that the Internet node is fixed and cannot be deleted', async () => {
     const { user } = renderApp();
-    await addDevice(user, 'Portátil');
+    await addDevice(user, 'Laptop');
 
     const internet = canvasCaption('Internet');
     pointer('pointerDown', internet, { x: 1000, y: 100 });
@@ -530,7 +530,7 @@ describe('accessibility', () => {
   it('announces the WiFi state instead of relying on colour alone (S34)', async () => {
     const { user } = renderApp();
     await addDevice(user, 'Router');
-    await addDevice(user, 'Móvil');
+    await addDevice(user, 'Smartphone');
 
     // The router broadcasts and the phone has not joined yet: two states, both announced.
     expect(screen.getAllByRole('img', { name: 'WiFi conectado' }).length).toBe(1);

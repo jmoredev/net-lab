@@ -51,8 +51,8 @@ describe('lab: adding devices', () => {
   it('numbers default names per kind', () => {
     const lab = unwrap(addDevice(createLab(), 'laptop', { x: 0, y: 0 }));
     const lab2 = unwrap(addDevice(lab, 'laptop', { x: 0, y: 0 }));
-    expect(lab2.devices.map((d) => d.name)).toContain('Portátil-1');
-    expect(lab2.devices.map((d) => d.name)).toContain('Portátil-2');
+    expect(lab2.devices.map((d) => d.name)).toContain('Laptop-1');
+    expect(lab2.devices.map((d) => d.name)).toContain('Laptop-2');
   });
 
   it('gives each device a MAC except the Internet node', () => {
