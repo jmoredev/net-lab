@@ -45,10 +45,16 @@ export type LabAction =
   | { type: 'select-link'; linkId: string | null }
   | { type: 'hover'; id: string | null }
   | { type: 'dismiss-message' }
+  | { type: 'load'; lab: Lab }
   | { type: 'reset' };
 
 export function initialLabState(): LabState {
   return { lab: createLab(), selectedId: null, selectedLinkId: null, hoveredId: null, message: null };
+}
+
+/** A state that only carries a lab: used by the example lab and by the stored lab (S24, S31). */
+export function labStateWith(lab: Lab): LabState {
+  return { lab, selectedId: null, selectedLinkId: null, hoveredId: null, message: null };
 }
 
 export function labReducer(state: LabState, action: LabAction): LabState {
@@ -101,6 +107,8 @@ export function labReducer(state: LabState, action: LabAction): LabState {
       return { ...state, hoveredId: action.id };
     case 'dismiss-message':
       return { ...state, message: null };
+    case 'load':
+      return labStateWith(action.lab);
     case 'reset':
       return initialLabState();
     default:

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INTERNET_ID } from '../../domain/lab';
+import { INTERNET_ID, addDevice, createLab } from '../../domain/lab';
 import { initialLabState, labReducer } from '../labReducer';
 
 describe('labReducer: adding devices', () => {
@@ -57,6 +57,29 @@ describe('labReducer: editing', () => {
   it('dismissing clears the message', () => {
     const state = labReducer(initialLabState(), { type: 'delete-device', id: INTERNET_ID });
     expect(labReducer(state, { type: 'dismiss-message' }).message).toBeNull();
+  });
+});
+
+describe('labReducer: loading a lab (S24)', () => {
+  it('replaces the lab and clears the selection and the message', () => {
+    const { state } = wiredState();
+    const linkId = state.lab.links[0].id;
+    let dirty = labReducer(state, { type: 'select-link', linkId });
+    dirty = labReducer(dirty, { type: 'delete-device', id: INTERNET_ID });
+    expect(dirty.selectedId).not.toBeNull();
+    expect(dirty.selectedLinkId).toBe(linkId);
+    expect(dirty.message).toBe('El nodo Internet no se puede eliminar.');
+
+    const example = addDevice(createLab(), 'switch', { x: 480, y: 320 });
+    if (!example.ok) throw new Error(example.error);
+    const loaded = labReducer(dirty, { type: 'load', lab: example.value });
+
+    expect(loaded).not.toBe(dirty);
+    expect(loaded.lab).toBe(example.value);
+    expect(loaded.selectedId).toBeNull();
+    expect(loaded.selectedLinkId).toBeNull();
+    expect(loaded.hoveredId).toBeNull();
+    expect(loaded.message).toBeNull();
   });
 });
 
