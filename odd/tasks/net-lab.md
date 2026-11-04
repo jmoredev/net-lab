@@ -124,7 +124,8 @@ Verificación: cada fila de la tabla es reproducible desde la UI y produce exact
 Reglas de comportamiento:
 - Sin camino posible, no hay animación y se muestra el motivo de S22 del extremo que lo impide.
 - El camino incluye como mínimo origen → (switch) → router → (Internet) → destino y el regreso.
-- Mientras dura la animación no se puede editar el laboratorio.
+- Mientras dura la animación no se puede editar el laboratorio: paleta, lienzo y panel quedan bloqueados.
+- El switch nunca es origen ni destino: es transparente y solo aparece como tramo del camino. Los extremos son equipos finales y el nodo Internet.
 - La animación no muestra traducciones del paquete ni etapas intermedias (NAT, MAC, tablas, ARP): solo el recorrido, con la etiqueta del origen y del destino.
 > «La animación muestra solo el viaje con la etiqueta de origen destino, no las traducciones que se van haciendo del paquete»
 
@@ -271,7 +272,7 @@ Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 | T5 | Paneles de configuración: direccionamiento, rango DHCP, NAT resumido y validaciones | S17–S21, S25, S28, S30 | worker | `f3b6ac4` |
 | T6 | Ayuda contextual: términos técnicos con sus analogías | S5 | worker | `f3b6ac4` |
 | T7 | Diagnóstico visual: resaltado en lienzo y motivo en panel | S22 | worker | `f3b6ac4` |
-| T8 | Animación de tráfico sobre el camino | S23 | inline | pendiente |
+| T8 | Animación de ida y vuelta con etiqueta de origen y destino | S23 | worker | `0931e4c` |
 | T9 | Laboratorio de ejemplo preconfigurado y vaciado | S24 | inline | pendiente |
 | T10 | Despliegue en GitHub Pages y README de aula | S1, S2 | inline | pendiente |
 | T11 | Persistencia del laboratorio en `localStorage` con descarte de datos inválidos | S31 | inline | pendiente |
@@ -353,4 +354,6 @@ Efecto de L6: nuevas S30 (NAT en dos frases con analogía) y S31 (persistencia e
 
 **L8 — Capa de UI entregada (T4–T7, commit `f3b6ac4`).** Paleta, lienzo SVG, panel del dispositivo, analogías y estilos. Verificación: `tsc --noEmit` limpio, 75 tests en verde, build de 79 KB gzip. Tres tensiones de la especificación detectadas al implementar y resueltas acá: S10 vs S26.5 (la marca de WiFi se admite en el lienzo), S27 (el nodo Internet se puede pulsar para ver información de lectura, sin configuración) y S12 (las dos acciones de conexión se ofrecen a la vez, sin diálogo previo).
 
-**L9 — Pendiente en v1.** T8 animación (S23), T9 laboratorio de ejemplo (S24), T10 persistencia (S31), T11 despliegue en Pages (S1, S2). Detalle menor conocido: un campo de rango DHCP vacío se envía como 0 y recibe el error de subred en lugar del de rango; corregir en T9 sin cambiar el texto aprobado.
+**L10 — Animación entregada (T8, commit `0931e4c`).** Módulo puro de animación con 9 tests, control de envío en el panel y overlay de un solo marcador con la ruta resaltada. Verificación: `tsc` limpio, 84 tests en verde, 80 KB gzip. Dos defectos detectados al revisar la entrega y corregidos en el mismo commit: los destinos del mismo tipo estaban excluidos (un portátil no podía enviar a otro portátil) y el panel seguía editable durante la animación.
+
+**L9 — Pendiente en v1.** T9 laboratorio de ejemplo (S24), T10 persistencia (S31), T11 despliegue en Pages (S1, S2). Detalle menor conocido: un campo de rango DHCP vacío se envía como 0 y recibe el error de subred en lugar del de rango; corregir en T9 sin cambiar el texto aprobado.
