@@ -622,3 +622,11 @@ body {
 .app__panel {
   display: contents;
 }
+
+/* The Internet node is the one device that cannot be moved or removed (S27). */
+.panel__note {
+  margin: 0;
+  padding: 8px 16px 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}

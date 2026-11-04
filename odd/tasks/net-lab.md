@@ -168,7 +168,7 @@ Composición propuesta del ejemplo: router con WiFi activo y `192.168.1.1`, cabl
 
 Verificación: una captura del lienzo con un laboratorio montado no muestra más de tres zonas, ningún texto permanente fuera de las etiquetas de dispositivo y ningún color fuera de la paleta declarada.
 
-**S27 — Nodo Internet fijo, visible y desconectable.** El nodo `Internet` está siempre en el lienzo, se ve desde el primer arranque, no se puede eliminar, no se puede renombrar y no tiene nada configurable: al pulsarlo se muestra solo información de lectura (su puerto, el cable hacia el router y sus explicaciones). El cable WAN entre el router y el nodo sí se puede quitar y volver a poner: quitarlo deja el laboratorio sin salida a Internet y el diagnóstico pasa a ser el motivo 9 de S22.
+**S27 — Nodo Internet fijo, visible y desconectable.** El nodo `Internet` está siempre en el lienzo, se ve desde el primer arranque, no se puede eliminar, no se puede renombrar y no tiene nada configurable: al pulsarlo se muestra solo información de lectura (su puerto, el cable hacia el router y sus explicaciones). Su panel lo dice con estas palabras: `El nodo Internet está fijo: no se puede mover ni eliminar.` Arrastrarlo no hace nada y no muestra ningún aviso, para no castigar una selección normal. El cable WAN entre el router y el nodo sí se puede quitar y volver a poner: quitarlo deja el laboratorio sin salida a Internet y el diagnóstico pasa a ser el motivo 9 de S22.
 > «El nodo Internet siempre está fijo y visible y no se puede eliminar, se puede desconectar el router de el mismo»
 
 ### H. Configuración, controles y persistencia
@@ -299,6 +299,7 @@ Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 | T13 | Envío por los cables y tramos WiFi discontinuos, tres colores de WiFi y arreglo del aviso de Fast Refresh | S23, S26, S34 | worker | `26d267c` |
 | T14 | Atribución `Built with Gentle-AI` en el README del repositorio | S35 | inline | `5376046` |
 | T15 | Publicación en GitHub Pages: rama `main`, entorno `github-pages` y verificación de S2 en producción | S1, S2 | inline | ver L15 |
+| T17 | Tier de tests de interacción con jsdom y Testing Library, más las dos correcciones que destapó | S11, S13, S22, S25, S28, S33, S34 | worker | ver L18 |
 | T16 | Acciones del workflow a majors con Node 24 (checkout 7, setup-node 7, configure-pages 6, upload-pages-artifact 5, deploy-pages 5, pnpm/action-setup 6) | S1, S2 | inline | `e988996` |
 
 **Convención de entrega (D19):** todo cambio entra en `main` por rama y pull request, nunca por push directo; el servidor rechaza el push directo con `fatal error in commit_refs_rules`.
@@ -379,6 +380,15 @@ Efecto de L6: nuevas S30 (NAT en dos frases con analogía) y S31 (persistencia e
 **L7 — Estado del trabajo.** Especificación cerrada (S1–S31, D1–D16). T2 y T3 implementados: scaffold Vite + React + TS, motor de dominio con 60 tests en verde y build de 69 KB gzip. Siguiente: T4.
 
 **L8 — Capa de UI entregada (T4–T7, commit `f3b6ac4`).** Paleta, lienzo SVG, panel del dispositivo, analogías y estilos. Verificación: `tsc --noEmit` limpio, 75 tests en verde, build de 79 KB gzip. Tres tensiones de la especificación detectadas al implementar y resueltas acá: S10 vs S26.5 (la marca de WiFi se admite en el lienzo), S27 (el nodo Internet se puede pulsar para ver información de lectura, sin configuración) y S12 (las dos acciones de conexión se ofrecen a la vez, sin diálogo previo).
+
+**L18 — Tests de interacción (T17).** Tier nuevo con `jsdom` 30, `@testing-library/react` 16 y `user-event` 14: 15 tests sobre los componentes reales, con stubs de `setPointerCapture`, `createSVGPoint`/`getScreenCTM` y `elementFromPoint`, porque jsdom no tiene layout ni captura de puntero. Total 139 tests en verde.
+
+Los tests destaparon dos defectos reales en código ya entregado, corregidos en el mismo commit:
+
+1. `isOverTrash` comparaba `closest(...) !== null`. Cuando no había nada bajo el puntero, el encadenamiento opcional devolvía `undefined`, y `undefined !== null` es `true`: soltar un equipo fuera del viewport lo **borraba en silencio**. Es el defecto más caro de los dos y lo encontró un test, no una revisión.
+2. El arrastre del nodo Internet se rechazaba sin explicación. En vez de un banner en cada clic —que castigaría una selección normal—, el motivo vive en su panel de lectura.
+
+Qué **no** prueban estos tests, y conviene tenerlo escrito: la entrega real de eventos del navegador, la captura de puntero fuera del SVG, el escalado del viewBox (el stub de `getScreenCTM` es identidad) y el tacto.
 
 **L17 — Acciones del workflow a Node 24 (commit `e988996`).** El run de L15 avisaba que cinco acciones declaraban Node 20 deprecado. Se subieron a su último major verificando en cada `action.yml` que declare `runs.using: node24` y que conserve los inputs del workflow. El deploy posterior siguió en verde y la anotación de Node 20 desapareció: los dos jobs quedan con una única anotación, informativa, sobre la migración de `ubuntu-latest` a Ubuntu 26 en octubre de 2026.
 

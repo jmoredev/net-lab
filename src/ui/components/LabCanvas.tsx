@@ -611,7 +611,9 @@ function portLabelPlacement(side: PortSide): {
 /** Was the pointer released over the palette, which acts as the trash zone (S11)? */
 function isOverTrash(clientX: number, clientY: number): boolean {
   if (typeof document.elementFromPoint !== 'function') return false;
-  return document.elementFromPoint(clientX, clientY)?.closest(TRASH_SELECTOR) !== null;
+  // `closest` is undefined when nothing is under the pointer, and comparing that with
+  // null made "released outside the page" read as "over the trash".
+  return Boolean(document.elementFromPoint(clientX, clientY)?.closest(TRASH_SELECTOR));
 }
 
 function nameOf(lab: Lab, deviceId: string): string {
