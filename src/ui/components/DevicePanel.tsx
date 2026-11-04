@@ -36,6 +36,12 @@ export function DevicePanel({ state, statuses, dispatch, busy, onSend }: DeviceP
         )}
       </header>
 
+      {isInternet ? (
+        <p className="panel__note">
+          El nodo Internet está fijo: no se puede mover ni eliminar.
+        </p>
+      ) : null}
+
       <section className="panel__section">
         <Row label="MAC" value={device.mac ?? '—'} />
         <Row label="IP" value={status?.ip ?? '—'} />
