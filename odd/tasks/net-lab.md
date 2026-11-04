@@ -145,7 +145,7 @@ Reglas de comportamiento:
 **S34 — Estado del WiFi por color.** La marca de WiFi de cada dispositivo usa tres colores: verde cuando está conectado (en el router, cuando emite; en un cliente, cuando está asociado), gris cuando el WiFi está desactivado, y rojo cuando está activado pero sin conectar.
 > «Cuando el wifi esté conectado, que aparezca la señal en verde, desactivado en gris y sin conectar en rojo»
 
-**S35 — Atribución de construcción.** La aplicación muestra en su cabecera el distintivo `Built with Gentle-AI`, enlazado a `https://github.com/Gentleman-Programming/gentle-ai`. Es el único recurso externo que carga la aplicación: si la imagen no está disponible, el texto alternativo mantiene visible la atribución y el enlace sigue funcionando.
+**S35 — Atribución de construcción.** El repositorio declara que fue construido con Gentle-AI mediante el distintivo `Built with Gentle-AI` en su `README.md`, enlazado a `https://github.com/Gentleman-Programming/gentle-ai`. La aplicación **no** muestra la atribución ni carga ningún recurso externo: el aula funciona sin conexión a terceros.
 > «Quiero que aparezca que ha sido construido con gentle-ai»
 
 ### G. Estado inicial y ejemplo
@@ -297,7 +297,7 @@ Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 | T11 | Persistencia del laboratorio en `localStorage` con descarte de datos inválidos | S31 | inline | pendiente |
 | T12 | Puertos visibles con nombre, cable arrastrando de puerto a puerto, selección y borrado de cables, borrado de dispositivo sobre la paleta y vuelta en otro color | S11, S13, S23, S32, S33 | worker | `924de83` |
 | T13 | Envío por los cables y tramos WiFi discontinuos, tres colores de WiFi y arreglo del aviso de Fast Refresh | S23, S26, S34 | worker | `26d267c` |
-| T14 | Atribución `Built with Gentle-AI` en la cabecera y en el README | S35 | inline | pendiente |
+| T14 | Atribución `Built with Gentle-AI` en el README del repositorio | S35 | inline | pendiente |
 
 ## Log
 
@@ -385,7 +385,7 @@ Quiero que aparezca que ha sido construido con gentle-ai: <a href="https://githu
 </a>
 ```
 
-Efecto de L13: nueva S35 (atribución en la cabecera) y tarea T14. El remoto `origin` queda configurado hacia ese repositorio; el `base` relativo de Vite ya funciona bajo el subpath `/net-lab/` de GitHub Pages.
+Efecto de L13: nueva S35 y tarea T14. Aclaración posterior del usuario (misma sesión): la atribución va **en el repositorio, no en la web**, así que vive solo en el `README.md` y la interfaz queda sin recursos externos. El remoto `origin` queda configurado hacia ese repositorio; el `base` relativo de Vite ya funciona bajo el subpath `/net-lab/` de GitHub Pages.
 
 **L12 — Cambios de envío y WiFi del usuario (texto literal):**
 

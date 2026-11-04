@@ -56,20 +56,6 @@ body {
 .app__actions {
   display: flex;
   gap: 8px;
-  margin-left: auto;
-}
-
-/* The only external resource of the app: the attribution badge. */
-.app__built-with {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.app__built-with img {
-  display: block;
-  height: auto;
-  max-width: 220px;
 }
 
 .app__body {

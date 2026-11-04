@@ -55,18 +55,6 @@ export function App() {
             Vaciar laboratorio
           </button>
         </div>
-        <a
-          className="app__built-with"
-          href="https://github.com/Gentleman-Programming/gentle-ai"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <img
-            width="220"
-            src="https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/docs/assets/brand/built-with-gentle-ai.png"
-            alt="Built with Gentle-AI"
-          />
-        </a>
       </header>
 
       {state.message !== null ? (
