@@ -1,23 +1,14 @@
 import { getDevice, isWanLink, type Lab } from './lab';
 import { hostOctet, isInSubnet, withHostOctet } from './subnet';
-import { CAPABILITIES, type Device } from './types';
+import { CAPABILITIES, type Device, type DiagnosticMessageCode, type MessageParams } from './types';
 
-export type ReasonCode =
-  | 'ethernet-disabled'
-  | 'wifi-disabled'
-  | 'not-connected'
-  | 'router-wifi-off'
-  | 'dead-end-cable'
-  | 'no-lease'
-  | 'ip-outside-subnet'
-  | 'ip-duplicate'
-  | 'gateway-wrong'
-  | 'router-no-wan'
-  | 'router-no-wan-address';
+export type ReasonCode = DiagnosticMessageCode;
 
 export interface Diagnosis {
   code: ReasonCode;
   text: string;
+  /** Raw values `text` interpolates, so the UI can rebuild the sentence in any language. */
+  params?: MessageParams;
 }
 
 export interface DeviceStatus {
@@ -195,7 +186,13 @@ function clientStatus(
     return blocked(wiring, 'router-wifi-off', 'El WiFi del router está desactivado.');
   }
   if (hasCable && !cableAccess) {
-    return blocked(wiring, 'dead-end-cable', `Este cable va a ${deadEndPeerName(lab, device)}, que no da salida a Internet.`);
+    const peer = deadEndPeer(lab, device);
+    return blocked(
+      wiring,
+      'dead-end-cable',
+      `Este cable va a ${peer?.name ?? 'un dispositivo'}, que no da salida a Internet.`,
+      peer ? { device: peer.name } : undefined,
+    );
   }
   if (!inNetwork || !router) {
     return blocked(wiring, 'not-connected', 'Este dispositivo no está conectado a ninguna red.');
@@ -210,16 +207,31 @@ function clientStatus(
   }
   if (!isInSubnet(ip, router.lanIp)) {
     const network = router.lanIp.split('.').slice(0, 3).join('.');
-    return blocked(reaching, 'ip-outside-subnet', `La IP ${ip} no pertenece a la subred ${network}.0.`);
+    return blocked(
+      reaching,
+      'ip-outside-subnet',
+      `La IP ${ip} no pertenece a la subred ${network}.0.`,
+      { ip, network },
+    );
   }
   const twin = lab.devices.find(
     (other) => other.id !== device.id && CAPABILITIES[other.kind].addressable && deviceAddress(other, leases) === ip,
   );
   if (twin) {
-    return blocked(reaching, 'ip-duplicate', `La IP ${ip} ya está en uso por ${twin.name}.`);
+    return blocked(
+      reaching,
+      'ip-duplicate',
+      `La IP ${ip} ya está en uso por ${twin.name}.`,
+      { ip, device: twin.name },
+    );
   }
   if (gateway !== router.lanIp) {
-    return blocked(reaching, 'gateway-wrong', `La puerta de enlace ${gateway} no es la del router (${router.lanIp}).`);
+    return blocked(
+      reaching,
+      'gateway-wrong',
+      `La puerta de enlace ${gateway} no es la del router (${router.lanIp}).`,
+      { gateway, routerIp: router.lanIp },
+    );
   }
 
   const wanConnected = lab.links.some((link) => isWanLink(lab, link));
@@ -236,23 +248,28 @@ function deviceAddress(device: Device, leases: Map<string, string>): string | nu
   return effectiveMode(device) === 'manual' ? device.manualIp : (leases.get(device.id) ?? null);
 }
 
-function deadEndPeerName(lab: Lab, device: Device): string {
+function deadEndPeer(lab: Lab, device: Device): Device | undefined {
   const link = lab.links.find((candidate) => candidate.a.deviceId === device.id || candidate.b.deviceId === device.id);
-  if (!link) return 'un dispositivo';
+  if (!link) return undefined;
   const peerRef = link.a.deviceId === device.id ? link.b : link.a;
-  return getDevice(lab, peerRef.deviceId)?.name ?? 'un dispositivo';
+  return getDevice(lab, peerRef.deviceId);
 }
 
 function online(ip: string | null): DeviceStatus {
   return { inNetwork: true, ip, gateway: null, hasInternet: true, reason: null };
 }
 
-function blocked(status: Partial<DeviceStatus>, code: ReasonCode, text: string): DeviceStatus {
+function blocked(
+  status: Partial<DeviceStatus>,
+  code: ReasonCode,
+  text: string,
+  params?: MessageParams,
+): DeviceStatus {
   return {
     inNetwork: status.inNetwork ?? false,
     ip: status.ip ?? null,
     gateway: status.gateway ?? null,
     hasInternet: false,
-    reason: { code, text },
+    reason: params === undefined ? { code, text } : { code, text, params },
   };
 }
