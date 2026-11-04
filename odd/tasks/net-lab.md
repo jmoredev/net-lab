@@ -50,7 +50,7 @@ Verificación: el bundle servido no descarga imágenes ni modelos de terceros; e
 **S9 — Puertos Ethernet visibles.** El panel del router lista sus puertos con nombre y estado (libre / ocupado por X), y el del switch también. Composición aprobada: router = 1 puerto WAN + 4 LAN numerados; switch = 8 puertos, añadible desde la paleta.
 > «ver los puertos ehternet que tiene»
 
-**S10 — WiFi del router conmutable.** El router permite activar y desactivar su WiFi; el estado se ve en el lienzo y desactiva el acceso de todos los clientes inalámbricos.
+**S10 — WiFi del router conmutable.** El router permite activar y desactivar su WiFi; el estado se ve en el lienzo con una marca mínima y desactiva el acceso de todos los clientes inalámbricos.
 > «activar y desactivar el wifi»
 
 **S11 — Mover y eliminar dispositivos.** Arrastrar recoloca un dispositivo; eliminarlo borra también sus cables y libera sus puertos. El nodo Internet nunca se elimina (S27).
@@ -58,7 +58,7 @@ Verificación: el bundle servido no descarga imágenes ni modelos de terceros; e
 
 ### C. Conexiones
 
-**S12 — Elegir el medio de conexión.** En los dispositivos que admiten más de una forma de conexión, el panel permite elegir cable o WiFi. La matriz de capacidades es la de D4.
+**S12 — Elegir el medio de conexión.** En los dispositivos que admiten más de una forma de conexión, el panel permite elegir cable o WiFi. La elección no es un diálogo previo: el panel ofrece las dos acciones a la vez y el alumnado elige actuando; la consecuencia la explica S22. La matriz de capacidades es la de D4.
 > «En los dispositivos que tengan varias formas de conexión, seleccionar si quiere conectarlo por cable o por wifi»
 
 **S13 — Cable a un puerto libre.** Al conectar por cable se elige el puerto de destino entre los puertos libres de los dispositivos compatibles (router, switch o el puerto Ethernet de otro equipo). Un puerto ocupado no aparece como destino válido.
@@ -80,7 +80,7 @@ Verificación: el móvil no ofrece destinos de cable; y un cable entre dos equip
 **S17 — IP visible cuando está en la red.** Un dispositivo conectado y en la subred muestra su dirección IP en el lienzo o en su etiqueta; uno desconectado no muestra IP.
 > «Cuando un dispositivo está conectado a la red que se muetre su dirección ip.»
 
-**S18 — MAC siempre visible.** Cada dispositivo tiene una MAC generada al crearse, estable durante la sesión, visible en su panel y en su etiqueta.
+**S18 — MAC siempre visible.** Cada dispositivo tiene una MAC generada al crearse, estable durante la sesión y visible en su panel. En el lienzo la etiqueta muestra solo nombre e IP (S26).
 > «Motrar también la mac de los dispositivos»
 
 **S19 — La IP del router define la subred.** El router tiene dirección (por defecto `192.168.1.1`) y su subred es /24: la red es la del router y la puerta de enlace de todos los clientes es la IP del router. Al cambiarla, los clientes por DHCP reciben direcciones nuevas en la nueva subred en el mismo acto.
@@ -143,12 +143,12 @@ Composición propuesta del ejemplo: router con WiFi activo y `192.168.1.1`, cabl
 2. Sin tutorial modal, sin carruseles, sin onboarding, sin elementos decorativos, sin imágenes de fondo. La ayuda vive en el panel del dispositivo (S5).
 3. Paleta de color mínima: neutros de fondo, un único color de acento, y color de estado reservado a dos significados: conectado y sin Internet. El rojo no se usa para nada más.
 4. Animación solo en la simulación de tráfico (S23) y en transiciones de estado de hasta 150 ms. Nada se mueve solo.
-5. Sobre el lienzo cada dispositivo muestra solo su icono y su etiqueta con nombre e IP; el resto (MAC, puertos, estado) vive en el panel.
+5. Sobre el lienzo cada dispositivo muestra solo su icono, su etiqueta con nombre e IP y dos marcas de estado: el resaltado de S22 y la señal de WiFi de S10. Todo lo demás (MAC, puertos, direccionamiento) vive en el panel.
 > «La interfaz debe de ser clara y limpia, sin distracciones para el alumnado»
 
 Verificación: una captura del lienzo con un laboratorio montado no muestra más de tres zonas, ningún texto permanente fuera de las etiquetas de dispositivo y ningún color fuera de la paleta declarada.
 
-**S27 — Nodo Internet fijo, visible y desconectable.** El nodo `Internet` está siempre en el lienzo, se ve desde el primer arranque, no se puede eliminar, no se puede renombrar y no tiene panel de configuración. El cable WAN entre el router y el nodo sí se puede quitar y volver a poner: quitarlo deja el laboratorio sin salida a Internet y el diagnóstico pasa a ser el motivo 9 de S22.
+**S27 — Nodo Internet fijo, visible y desconectable.** El nodo `Internet` está siempre en el lienzo, se ve desde el primer arranque, no se puede eliminar, no se puede renombrar y no tiene nada configurable: al pulsarlo se muestra solo información de lectura (su puerto, el cable hacia el router y sus explicaciones). El cable WAN entre el router y el nodo sí se puede quitar y volver a poner: quitarlo deja el laboratorio sin salida a Internet y el diagnóstico pasa a ser el motivo 9 de S22.
 > «El nodo Internet siempre está fijo y visible y no se puede eliminar, se puede desconectar el router de el mismo»
 
 ### H. Configuración, controles y persistencia
@@ -223,9 +223,9 @@ Un sobremesa sin WiFi es discutible, pero hace el ejercicio más claro; si prefi
 
 **D16 — Sistema visual mínimo. *(aprobada)*** Neutros + un acento + dos colores de estado, tipografía de sistema, densidad baja, controles grandes. Es la aterrización de S26: si un elemento no informa ni se acciona, no se dibuja.
 
-**D17 — Un solo router por laboratorio. *(derivada al implementar — pendiente de OK)*** Dos routers obligan a enrutar entre subredes, que está fuera de alcance: el modelo quedaría a medias. La paleta no ofrece un segundo router y responde `Ya hay un router en el laboratorio.`
+**D17 — Un solo router por laboratorio. *(aprobada)*** Dos routers obligan a enrutar entre subredes, que está fuera de alcance: el modelo quedaría a medias. La paleta no ofrece un segundo router y responde `Ya hay un router en el laboratorio.`
 
-**D18 — Puerta de enlace manual en modo manual. *(derivada al implementar — pendiente de OK)*** El motivo 8 de S22 solo es alcanzable si el alumnado puede escribir una puerta de enlace distinta de la del router, así que en modo manual el panel la expone (por defecto, la del router). La fila 10 de S22 (router con cable WAN pero sin dirección) es una red de seguridad que no debería darse nunca en un estado coherente; se mantiene para que el modelo sea total.
+**D18 — Puerta de enlace manual en modo manual. *(aprobada)*** El motivo 8 de S22 solo es alcanzable si el alumnado puede escribir una puerta de enlace distinta de la del router, así que en modo manual el panel la expone (por defecto, la del router). La fila 10 de S22 (router con cable WAN pero sin dirección) es una red de seguridad que no debería darse nunca en un estado coherente; se mantiene para que el modelo sea total.
 
 ## Analogías (contenido didáctico)
 
@@ -267,10 +267,10 @@ Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 | T1 | Especificación v1.3 y revisión | — | inline | `b3935b2` |
 | T2 | Scaffold: Vite + React + TS, estructura, build relativo para Pages | S1, S2 | inline | `9f022fc` |
 | T3 | Motor de dominio: dispositivos, puertos, cables, subred, DHCP, diagnóstico | S12–S22 | inline | `5f185e6` |
-| T4 | Lienzo SVG: paleta con switch, arrastre, renombrar, eliminar, Internet fijo, cables, clic y hover | S6–S11, S24–S27, S29 | worker | pendiente |
-| T5 | Paneles de configuración: direccionamiento, rango DHCP, NAT resumido y validaciones | S17–S21, S25, S28, S30 | worker | pendiente |
-| T6 | Ayuda contextual: términos técnicos con sus analogías | S5 | inline | pendiente |
-| T7 | Diagnóstico visual: resaltado en lienzo y motivo en panel | S22 | inline | pendiente |
+| T4 | Lienzo SVG: paleta con switch, arrastre, renombrar, eliminar, Internet fijo, cables, clic y hover | S6–S11, S24–S27, S29 | worker | `f3b6ac4` |
+| T5 | Paneles de configuración: direccionamiento, rango DHCP, NAT resumido y validaciones | S17–S21, S25, S28, S30 | worker | `f3b6ac4` |
+| T6 | Ayuda contextual: términos técnicos con sus analogías | S5 | worker | `f3b6ac4` |
+| T7 | Diagnóstico visual: resaltado en lienzo y motivo en panel | S22 | worker | `f3b6ac4` |
 | T8 | Animación de tráfico sobre el camino | S23 | inline | pendiente |
 | T9 | Laboratorio de ejemplo preconfigurado y vaciado | S24 | inline | pendiente |
 | T10 | Despliegue en GitHub Pages y README de aula | S1, S2 | inline | pendiente |
@@ -350,3 +350,7 @@ Sobre las preguntas abiertas:
 Efecto de L6: nuevas S30 (NAT en dos frases con analogía) y S31 (persistencia en `localStorage`); S23 ampliada para excluir las traducciones del paquete; D8 ampliada; Q1–Q3 cerradas; tarea T11.
 
 **L7 — Estado del trabajo.** Especificación cerrada (S1–S31, D1–D16). T2 y T3 implementados: scaffold Vite + React + TS, motor de dominio con 60 tests en verde y build de 69 KB gzip. Siguiente: T4.
+
+**L8 — Capa de UI entregada (T4–T7, commit `f3b6ac4`).** Paleta, lienzo SVG, panel del dispositivo, analogías y estilos. Verificación: `tsc --noEmit` limpio, 75 tests en verde, build de 79 KB gzip. Tres tensiones de la especificación detectadas al implementar y resueltas acá: S10 vs S26.5 (la marca de WiFi se admite en el lienzo), S27 (el nodo Internet se puede pulsar para ver información de lectura, sin configuración) y S12 (las dos acciones de conexión se ofrecen a la vez, sin diálogo previo).
+
+**L9 — Pendiente en v1.** T8 animación (S23), T9 laboratorio de ejemplo (S24), T10 persistencia (S31), T11 despliegue en Pages (S1, S2). Detalle menor conocido: un campo de rango DHCP vacío se envía como 0 y recibe el error de subred en lugar del de rango; corregir en T9 sin cambiar el texto aprobado.
