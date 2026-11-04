@@ -346,13 +346,25 @@ body {
   color: var(--text);
 }
 
+/* WiFi mark (S10): one colour per state, all from the declared palette (S34, D16). */
 .device__wifi {
-  color: var(--text);
+  color: var(--text-muted);
   transition: color 120ms ease;
 }
 
+/* Connected: the router emits, or the client joined the network. */
+.device__wifi--online {
+  color: var(--state-online);
+}
+
+/* Interface off: neutral mid grey, never red (S34). */
 .device__wifi--off {
-  color: var(--border);
+  color: var(--text-muted);
+}
+
+/* Enabled but not joined: red, the same meaning as the no-connection state (S26, S34). */
+.device__wifi--disconnected {
+  color: var(--state-offline);
 }
 
 .tooltip rect {

@@ -10,7 +10,7 @@ import {
 import type { DeviceStatus } from '../../domain/diagnostics';
 import { getDevice, portIsFree, type Lab, type Link } from '../../domain/lab';
 import { CAPABILITIES, type Device, type DeviceKind, type Point, type PortRef } from '../../domain/types';
-import { ROUND_TRIP_MS, pointAlong, roundTripProgress, routePolyline, type Travel } from '../animation';
+import { ROUND_TRIP_MS, pointAlong, roundTripProgress, routePolyline, routeSegments, type Travel } from '../animation';
 import { deviceLabel } from '../format';
 import {
   CANVAS,
@@ -26,8 +26,8 @@ import {
   type PortSide,
 } from '../geometry';
 import type { LabAction, LabState } from '../labReducer';
+import { PALETTE_KINDS, PALETTE_MIME } from '../palette';
 import { DeviceGlyph } from './DeviceGlyph';
-import { PALETTE_KINDS, PALETTE_MIME } from './DevicePalette';
 
 const GLYPH_SIZE = 40;
 const PACKET_RADIUS = 7;
@@ -39,6 +39,8 @@ const TOOLTIP_LINE_HEIGHT = 14;
 const TOOLTIP_PADDING = 10;
 const TOOLTIP_CHAR_WIDTH = 6.2;
 const DELETE_BADGE_RADIUS = 9;
+/** Dash pattern of the fictitious wireless leg (S23): there is no cable to draw. */
+const WIFI_DASH = '7 6';
 const TRASH_SELECTOR = '[data-drop="trash"]';
 
 export interface LabCanvasProps {
@@ -86,8 +88,9 @@ export function LabCanvas({
   const { lab } = state;
   const isEmpty = lab.devices.every((device) => device.kind === 'internet');
 
-  const routePoints = useMemo(
-    () => (travel ? routePolyline(lab, travel.from, travel.to) : null),
+  // The route the marker follows, split per medium: cable legs are solid, wireless dotted.
+  const routeLegs = useMemo(
+    () => (travel ? routeSegments(lab, travel.from, travel.to) : null),
     [lab, travel],
   );
 
@@ -350,13 +353,20 @@ export function LabCanvas({
           ) : null}
         </g>
 
-        {/* The route the packet travels, behind the devices so the icons stay readable. */}
-        {travel && routePoints ? (
-          <polyline
-            className={`route__stroke${marker?.returning ? ' route__stroke--return' : ''}`}
-            points={routePoints.map((point) => `${point.x},${point.y}`).join(' ')}
-            pointerEvents="none"
-          />
+        {/* The route the packet travels, behind the devices so the icons stay readable.
+            One stroke per leg: solid over a cable, dashed over the fictitious WiFi leg (S23). */}
+        {travel && routeLegs ? (
+          <g className="route" pointerEvents="none">
+            {routeLegs.map((leg, index) => (
+              <path
+                key={`${leg.from.x},${leg.from.y}-${leg.to.x},${leg.to.y}-${index}`}
+                className={`route__stroke${marker?.returning ? ' route__stroke--return' : ''}`}
+                d={`M ${leg.from.x} ${leg.from.y} L ${leg.to.x} ${leg.to.y}`}
+                strokeDasharray={leg.medium === 'wifi' ? WIFI_DASH : undefined}
+                pointerEvents="none"
+              />
+            ))}
+          </g>
         ) : null}
 
         {isEmpty ? (
@@ -375,6 +385,7 @@ export function LabCanvas({
           const status = statuses[device.id];
           const selected = state.selectedId === device.id;
           const offline = Boolean(status?.reason);
+          const wifiState = wifiStateOf(device);
           const anchors = portAnchors(device);
           const local = anchors.map((anchor) => ({
             ...anchor,
@@ -419,7 +430,7 @@ export function LabCanvas({
               <g transform={`translate(${(DEVICE_SIZE - GLYPH_SIZE) / 2} ${(DEVICE_SIZE - GLYPH_SIZE) / 2 - 4})`}>
                 <DeviceGlyph kind={device.kind} size={GLYPH_SIZE} />
               </g>
-              {CAPABILITIES[device.kind].wifi ? <WifiMark on={device.wifiEnabled} /> : null}
+              {wifiState ? <WifiMark state={wifiState} /> : null}
               <text
                 className="device__caption"
                 x={DEVICE_SIZE / 2}
@@ -514,11 +525,39 @@ export function LabCanvas({
   );
 }
 
-/** WiFi state on the canvas (S10): on when the interface is enabled, faded when it is off. */
-function WifiMark({ on }: { on: boolean }) {
+/** The three WiFi states of the canvas mark (S34). */
+type WifiState = 'online' | 'off' | 'disconnected';
+
+const WIFI_STATE_CLASS: Record<WifiState, string> = {
+  online: 'device__wifi--online',
+  off: 'device__wifi--off',
+  disconnected: 'device__wifi--disconnected',
+};
+
+const WIFI_STATE_TITLE: Record<WifiState, string> = {
+  online: 'WiFi conectado',
+  off: 'WiFi desactivado',
+  disconnected: 'WiFi sin conectar',
+};
+
+/**
+ * WiFi state of a device (S34): the router is connected while it broadcasts, a client is
+ * connected when it is associated, off while its interface is down, and disconnected when
+ * the interface is up but it has not joined the network. `null` for the devices without
+ * WiFi, which keep no mark at all.
+ */
+function wifiStateOf(device: Device): WifiState | null {
+  if (!CAPABILITIES[device.kind].wifi) return null;
+  if (!device.wifiEnabled) return 'off';
+  if (device.kind === 'router') return 'online';
+  return device.wifiAssociated ? 'online' : 'disconnected';
+}
+
+/** WiFi state on the canvas (S10, S34): green when connected, grey when off, red when not joined. */
+function WifiMark({ state }: { state: WifiState }) {
   return (
     <g
-      className={`device__wifi${on ? '' : ' device__wifi--off'}`}
+      className={`device__wifi ${WIFI_STATE_CLASS[state]}`}
       transform={`translate(${DEVICE_SIZE - 22} 7)`}
       fill="none"
       stroke="currentColor"
@@ -526,6 +565,7 @@ function WifiMark({ on }: { on: boolean }) {
       strokeLinecap="round"
       pointerEvents="none"
     >
+      <title>{WIFI_STATE_TITLE[state]}</title>
       <path d="M0 4.5a10 10 0 0 1 12 0" />
       <path d="M2.4 7.8a6.4 6.4 0 0 1 7.2 0" />
       <path d="M4.8 11a2.8 2.8 0 0 1 2.4 0" />

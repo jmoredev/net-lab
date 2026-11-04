@@ -1,14 +1,10 @@
 import type { Dispatch } from 'react';
-import { CAPABILITIES, type DeviceKind } from '../../domain/types';
+import { CAPABILITIES } from '../../domain/types';
 import { nextFreePosition } from '../geometry';
 import type { LabAction, LabState } from '../labReducer';
+// Palette data lives in a plain module, so this one only exports components (Fast Refresh).
+import { PALETTE_KINDS, PALETTE_MIME } from '../palette';
 import { DeviceGlyph } from './DeviceGlyph';
-
-/** Addable kinds, in the order the palette shows them (S6, S7, D1). */
-export const PALETTE_KINDS: readonly DeviceKind[] = ['router', 'switch', 'laptop', 'desktop', 'phone'];
-
-/** Drag payload used between the palette and the canvas. */
-export const PALETTE_MIME = 'application/x-net-lab-kind';
 
 export interface DevicePaletteProps {
   state: LabState;
