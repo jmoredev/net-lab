@@ -10,8 +10,10 @@ import {
 import type { DeviceStatus } from '../../domain/diagnostics';
 import { getDevice, portIsFree, type Lab, type Link } from '../../domain/lab';
 import { CAPABILITIES, type Device, type DeviceKind, type Point, type PortRef } from '../../domain/types';
+import { useI18n } from '../../i18n/LanguageProvider';
+import type { UiKey } from '../../i18n/types';
 import { ROUND_TRIP_MS, pointAlong, roundTripProgress, routePolyline, routeSegments, type Travel } from '../animation';
-import { deviceLabel } from '../format';
+import { deviceLabel, portLabel } from '../format';
 import {
   CANVAS,
   DEVICE_SIZE,
@@ -70,6 +72,9 @@ interface Marker {
   returning: boolean;
 }
 
+/** The helpers below only ever render interface strings, never a domain message. */
+type Translate = (key: UiKey) => string;
+
 export function LabCanvas({
   state,
   statuses,
@@ -85,6 +90,7 @@ export function LabCanvas({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [cableDrag, setCableDrag] = useState<{ from: Point; to: Point } | null>(null);
   const [marker, setMarker] = useState<Marker | null>(null);
+  const { t, lang } = useI18n();
   const { lab } = state;
   const isEmpty = lab.devices.every((device) => device.kind === 'internet');
 
@@ -271,13 +277,13 @@ export function LabCanvas({
   }
 
   const hovered = state.hoveredId ? getDevice(lab, state.hoveredId) : undefined;
-  const tooltip = hovered ? tooltipFor(hovered, statuses[hovered.id]) : null;
+  const tooltip = hovered ? tooltipFor(t, hovered, statuses[hovered.id]) : null;
   const caption = travel
-    ? `Enviando un paquete de ${nameOf(lab, travel.from)} a ${nameOf(lab, travel.to)}`
+    ? t('canvas.sending', { from: nameOf(t, lab, travel.from), to: nameOf(t, lab, travel.to) })
     : '';
 
   return (
-    <section className="canvas-zone" aria-label="Lienzo" aria-busy={busy}>
+    <section className="canvas-zone" aria-label={t('canvas.zone')} aria-busy={busy}>
       {/* S23 as amended by Q3: the caption names the trip only, with no transformations. */}
       <p className="canvas-zone__caption" aria-live="polite">
         {caption}
@@ -287,7 +293,7 @@ export function LabCanvas({
         className="canvas"
         viewBox={`0 0 ${CANVAS.width} ${CANVAS.height}`}
         role="application"
-        aria-label="Lienzo del laboratorio de redes: arrastra los dispositivos para colocarlos y pulsa uno para abrir su panel"
+        aria-label={t('canvas.description')}
         onDragOver={(event) => {
           event.preventDefault();
           event.dataTransfer.dropEffect = 'copy';
@@ -333,7 +339,10 @@ export function LabCanvas({
                   y2={ends.end.y}
                   role="button"
                   tabIndex={0}
-                  aria-label={`Cable entre ${nameOf(lab, link.a.deviceId)} y ${nameOf(lab, link.b.deviceId)}`}
+                  aria-label={t('canvas.cableBetween', {
+                    from: nameOf(t, lab, link.a.deviceId),
+                    to: nameOf(t, lab, link.b.deviceId),
+                  })}
                   onPointerDown={(event) => event.stopPropagation()}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -381,10 +390,10 @@ export function LabCanvas({
         {isEmpty ? (
           <g className="canvas__empty">
             <text x={CANVAS.width / 2} y={CANVAS.height / 2 - 8}>
-              El laboratorio está vacío.
+              {t('canvas.emptyTitle')}
             </text>
             <text x={CANVAS.width / 2} y={CANVAS.height / 2 + 18}>
-              Arrastra un dispositivo desde la paleta para empezar.
+              {t('canvas.emptyHint')}
             </text>
           </g>
         ) : null}
@@ -446,13 +455,15 @@ export function LabCanvas({
                 y={captionY}
                 textAnchor="middle"
               >
-                {deviceLabel(device, status)}
+                {deviceLabel(lang, device, status)}
               </text>
 
               {/* Ports on the border of the box, each with its name (S32). */}
               {local.map((anchor) => {
                 const free = portIsFree(lab, device.id, anchor.portId);
                 const label = portLabelPlacement(anchor.side);
+                // Resolved from the catalogue: the geometry only places the dot, it does not name it.
+                const portName = portLabel(lang, device, anchor.portId);
                 return (
                   <g key={anchor.portId}>
                     <circle
@@ -461,13 +472,13 @@ export function LabCanvas({
                       cy={anchor.local.y}
                       r={PORT_RADIUS}
                       role="button"
-                      aria-label={`${device.name}, ${anchor.fullLabel}`}
+                      aria-label={t('canvas.portLabel', { device: device.name, port: portName })}
                       onPointerDown={(event) => startCableDrag(event, device, anchor)}
                       onPointerMove={continueCableDrag}
                       onPointerUp={endCableDrag}
                       onPointerCancel={cancelCableDrag}
                     >
-                      <title>{anchor.fullLabel}</title>
+                      <title>{portName}</title>
                     </circle>
                     <text
                       className="port__label"
@@ -490,7 +501,7 @@ export function LabCanvas({
             className="cable__badge"
             transform={`translate(${badge.x} ${badge.y})`}
             role="button"
-            aria-label="Eliminar el cable seleccionado"
+            aria-label={t('canvas.deleteCable')}
             onClick={(event) => {
               event.stopPropagation();
               if (busy) return;
@@ -543,10 +554,10 @@ const WIFI_STATE_CLASS: Record<WifiState, string> = {
   disconnected: 'device__wifi--disconnected',
 };
 
-const WIFI_STATE_TITLE: Record<WifiState, string> = {
-  online: 'WiFi conectado',
-  off: 'WiFi desactivado',
-  disconnected: 'WiFi sin conectar',
+const WIFI_STATE_TITLE: Record<WifiState, UiKey> = {
+  online: 'canvas.wifiOnline',
+  off: 'canvas.wifiOff',
+  disconnected: 'canvas.wifiDisconnected',
 };
 
 /**
@@ -564,6 +575,8 @@ function wifiStateOf(device: Device): WifiState | null {
 
 /** WiFi state on the canvas (S10, S34): green when connected, grey when off, red when not joined. */
 function WifiMark({ state }: { state: WifiState }) {
+  const { t } = useI18n();
+  const title = t(WIFI_STATE_TITLE[state]);
   return (
     <g
       className={`device__wifi ${WIFI_STATE_CLASS[state]}`}
@@ -576,9 +589,9 @@ function WifiMark({ state }: { state: WifiState }) {
       // The state is colour-only in CSS, so the accessible name is what carries it for
       // assistive technology (S34).
       role="img"
-      aria-label={WIFI_STATE_TITLE[state]}
+      aria-label={title}
     >
-      <title>{WIFI_STATE_TITLE[state]}</title>
+      <title>{title}</title>
       <path d="M0 4.5a10 10 0 0 1 12 0" />
       <path d="M2.4 7.8a6.4 6.4 0 0 1 7.2 0" />
       <path d="M4.8 11a2.8 2.8 0 0 1 2.4 0" />
@@ -629,8 +642,8 @@ function isOverTrash(clientX: number, clientY: number): boolean {
   return Boolean(document.elementFromPoint(clientX, clientY)?.closest(TRASH_SELECTOR));
 }
 
-function nameOf(lab: Lab, deviceId: string): string {
-  return getDevice(lab, deviceId)?.name ?? 'un dispositivo';
+function nameOf(t: Translate, lab: Lab, deviceId: string): string {
+  return getDevice(lab, deviceId)?.name ?? t('canvas.unknownDevice');
 }
 
 /** Some students ask their system for less motion; then the route shows without the marker. */
@@ -639,14 +652,18 @@ function prefersReducedMotion(): boolean {
 }
 
 /** Hover summary (S29): name, IP when it has one and whether it has Internet access. */
-function tooltipFor(device: Device, status: DeviceStatus | undefined): Tooltip {
+function tooltipFor(
+  t: Translate,
+  device: Device,
+  status: DeviceStatus | undefined,
+): Tooltip {
   const position = renderPosition(device);
   const ip = status?.ip ?? null;
   const hasInternet = status?.hasInternet ?? false;
   const lines: Tooltip['lines'] = [{ text: device.name, tone: 'plain' }];
   if (ip) lines.push({ text: ip, tone: 'plain' });
   lines.push({
-    text: hasInternet ? 'Con salida a Internet' : 'Sin salida a Internet',
+    text: hasInternet ? t('status.online') : t('status.offline'),
     tone: hasInternet ? 'online' : 'offline',
   });
 

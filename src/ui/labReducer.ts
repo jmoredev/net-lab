@@ -16,7 +16,7 @@ import {
   type Lab,
   type Result,
 } from '../domain/lab';
-import type { DeviceKind, Point, PortRef } from '../domain/types';
+import type { DeviceKind, DomainMessageCode, MessageParams, Point, PortRef } from '../domain/types';
 
 export interface LabState {
   lab: Lab;
@@ -26,6 +26,9 @@ export interface LabState {
   hoveredId: string | null;
   /** Last user-facing failure, in the exact wording of the specification. */
   message: string | null;
+  /** The same failure as a code, so the banner can be rendered in either language. */
+  messageCode: DomainMessageCode | null;
+  messageParams?: MessageParams;
 }
 
 export type LabAction =
@@ -49,21 +52,34 @@ export type LabAction =
   | { type: 'reset' };
 
 export function initialLabState(): LabState {
-  return { lab: createLab(), selectedId: null, selectedLinkId: null, hoveredId: null, message: null };
+  return {
+    lab: createLab(),
+    selectedId: null,
+    selectedLinkId: null,
+    hoveredId: null,
+    message: null,
+    messageCode: null,
+  };
 }
 
 /** A state that only carries a lab: used by the example lab and by the stored lab (S24, S31). */
 export function labStateWith(lab: Lab): LabState {
-  return { lab, selectedId: null, selectedLinkId: null, hoveredId: null, message: null };
+  return { lab, selectedId: null, selectedLinkId: null, hoveredId: null, message: null, messageCode: null };
 }
 
 export function labReducer(state: LabState, action: LabAction): LabState {
   switch (action.type) {
     case 'add-device': {
       const result = addDevice(state.lab, action.kind, action.position);
-      if (!result.ok) return { ...state, message: result.error };
+      if (!result.ok) return failed(state, result);
       const devices = result.value.devices;
-      return { ...state, lab: result.value, selectedId: devices[devices.length - 1].id, message: null };
+      return {
+        ...state,
+        lab: result.value,
+        selectedId: devices[devices.length - 1].id,
+        message: null,
+        messageCode: null,
+      };
     }
     case 'move-device':
       return { ...state, lab: moveDevice(state.lab, action.id, action.position) };
@@ -106,7 +122,7 @@ export function labReducer(state: LabState, action: LabAction): LabState {
     case 'hover':
       return { ...state, hoveredId: action.id };
     case 'dismiss-message':
-      return { ...state, message: null };
+      return { ...state, message: null, messageCode: null };
     case 'load':
       return labStateWith(action.lab);
     case 'reset':
@@ -117,7 +133,12 @@ export function labReducer(state: LabState, action: LabAction): LabState {
 }
 
 function apply(state: LabState, result: Result<Lab>): LabState {
-  return result.ok ? { ...state, lab: result.value, message: null } : { ...state, message: result.error };
+  return result.ok ? { ...state, lab: result.value, message: null, messageCode: null } : failed(state, result);
+}
+
+/** A failure travels twice: as the domain's Spanish text and as a code for the catalogue. */
+function failed(state: LabState, result: Extract<Result<Lab>, { ok: false }>): LabState {
+  return { ...state, message: result.error, messageCode: result.code, messageParams: result.params };
 }
 
 /** Keeps a cable selection only while that cable is still part of the lab. */
