@@ -292,12 +292,12 @@ Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 | T6 | Ayuda contextual: términos técnicos con sus analogías | S5 | worker | `f3b6ac4` |
 | T7 | Diagnóstico visual: resaltado en lienzo y motivo en panel | S22 | worker | `f3b6ac4` |
 | T8 | Animación de ida y vuelta con etiqueta de origen y destino | S23 | worker | `0931e4c` |
-| T9 | Laboratorio de ejemplo preconfigurado y vaciado | S24 | inline | pendiente |
-| T10 | Despliegue en GitHub Pages y README de aula | S1, S2 | inline | pendiente |
-| T11 | Persistencia del laboratorio en `localStorage` con descarte de datos inválidos | S31 | inline | pendiente |
+| T9 | Laboratorio de ejemplo preconfigurado y vaciado | S24 | worker | `cbe9ab5` |
+| T10 | Despliegue en GitHub Pages y README de aula | S1, S2 | worker | `cbe9ab5` |
+| T11 | Persistencia del laboratorio en `localStorage` con descarte de datos inválidos | S31 | worker | `cbe9ab5` |
 | T12 | Puertos visibles con nombre, cable arrastrando de puerto a puerto, selección y borrado de cables, borrado de dispositivo sobre la paleta y vuelta en otro color | S11, S13, S23, S32, S33 | worker | `924de83` |
 | T13 | Envío por los cables y tramos WiFi discontinuos, tres colores de WiFi y arreglo del aviso de Fast Refresh | S23, S26, S34 | worker | `26d267c` |
-| T14 | Atribución `Built with Gentle-AI` en el README del repositorio | S35 | inline | pendiente |
+| T14 | Atribución `Built with Gentle-AI` en el README del repositorio | S35 | inline | `5376046` |
 
 ## Log
 
@@ -375,6 +375,8 @@ Efecto de L6: nuevas S30 (NAT en dos frases con analogía) y S31 (persistencia e
 **L7 — Estado del trabajo.** Especificación cerrada (S1–S31, D1–D16). T2 y T3 implementados: scaffold Vite + React + TS, motor de dominio con 60 tests en verde y build de 69 KB gzip. Siguiente: T4.
 
 **L8 — Capa de UI entregada (T4–T7, commit `f3b6ac4`).** Paleta, lienzo SVG, panel del dispositivo, analogías y estilos. Verificación: `tsc --noEmit` limpio, 75 tests en verde, build de 79 KB gzip. Tres tensiones de la especificación detectadas al implementar y resueltas acá: S10 vs S26.5 (la marca de WiFi se admite en el lienzo), S27 (el nodo Internet se puede pulsar para ver información de lectura, sin configuración) y S12 (las dos acciones de conexión se ofrecen a la vez, sin diálogo previo).
+
+**L14 — v1 cerrada (commit `cbe9ab5`).** T9 laboratorio de ejemplo, T10 persistencia y T11 despliegue entregados. Verificación: `tsc` limpio, 124 tests en verde (102 + 22 nuevos), 83,4 KB gzip. La especificación S1–S35 queda satisfecha salvo un detalle conocido y anotado en L9 (el campo de rango DHCP vacío muestra el error de subred en vez del de rango). Queda por delante la decisión del usuario de publicar: `main` aún no existe y el primer push lo abre.
 
 **L13 — Repositorio y atribución (texto literal):**
 
