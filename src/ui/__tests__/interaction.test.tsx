@@ -510,3 +510,30 @@ describe('deleting a device on the palette', () => {
     ).not.toBeNull();
   });
 });
+
+describe('accessibility', () => {
+  it('selects a cable with the keyboard so it can be removed without a pointer (S33)', async () => {
+    const { user, container } = renderApp();
+    await cableRouterAndLaptop(user);
+
+    const hit = cableHitTarget(container) as HTMLElement;
+    hit.focus();
+    expect(document.activeElement).toBe(hit);
+
+    await user.keyboard('{Enter}');
+    expect(screen.getByRole('button', { name: 'Eliminar el cable seleccionado' })).not.toBeNull();
+
+    await user.keyboard('{Delete}');
+    expect(screen.queryByRole('button', { name: 'Eliminar el cable seleccionado' })).toBeNull();
+  });
+
+  it('announces the WiFi state instead of relying on colour alone (S34)', async () => {
+    const { user } = renderApp();
+    await addDevice(user, 'Router');
+    await addDevice(user, 'Móvil');
+
+    // The router broadcasts and the phone has not joined yet: two states, both announced.
+    expect(screen.getAllByRole('img', { name: 'WiFi conectado' }).length).toBe(1);
+    expect(screen.getAllByRole('img', { name: 'WiFi sin conectar' }).length).toBe(1);
+  });
+});
