@@ -155,13 +155,24 @@ body {
 .canvas-zone {
   display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
   min-width: 0;
   padding: 12px;
 }
 
+.canvas-zone__caption {
+  margin: 0;
+  min-height: 1.45em;
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+}
+
 .canvas {
   display: block;
+  flex: 1 1 auto;
   width: 100%;
+  min-height: 0;
   height: 100%;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -184,8 +195,29 @@ body {
   stroke-linecap: round;
 }
 
+/* Route of the packet (S23): one highlighted stroke, so the path is visible, not only the dot. */
+.route__stroke {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-opacity: 0.55;
+}
+
+.packet {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 1.5;
+}
+
 .device {
   cursor: grab;
+}
+
+/* While a packet is on its way nothing on the canvas can be moved or picked (S23). */
+.canvas-zone[aria-busy='true'] .device {
+  cursor: default;
 }
 
 .device--dragging {
@@ -476,4 +508,10 @@ body {
   padding-left: 8px;
   font-size: 0.9375rem;
   border-left: 2px solid var(--border);
+}
+
+/* While a packet travels the whole lab is locked (S23); display: contents
+   keeps the panel as a direct grid item of .app__body. */
+.app__panel {
+  display: contents;
 }

@@ -13,9 +13,11 @@ export const PALETTE_MIME = 'application/x-net-lab-kind';
 export interface DevicePaletteProps {
   state: LabState;
   dispatch: Dispatch<LabAction>;
+  /** True while an animation runs: adding devices is disabled (S23). */
+  busy: boolean;
 }
 
-export function DevicePalette({ state, dispatch }: DevicePaletteProps) {
+export function DevicePalette({ state, dispatch, busy }: DevicePaletteProps) {
   const routerTaken = state.lab.router !== null;
 
   return (
@@ -23,7 +25,7 @@ export function DevicePalette({ state, dispatch }: DevicePaletteProps) {
       <h2 className="zone__title">Dispositivos</h2>
       <ul className="palette__list">
         {PALETTE_KINDS.map((kind) => {
-          const disabled = kind === 'router' && routerTaken;
+          const disabled = busy || (kind === 'router' && routerTaken);
           return (
             <li key={kind}>
               <button

@@ -3,16 +3,20 @@ import type { DeviceStatus } from '../../domain/diagnostics';
 import { availablePorts, getDevice, portsOf, type Lab } from '../../domain/lab';
 import { CAPABILITIES, type AddressingMode, type Device } from '../../domain/types';
 import { ANALOGIES, type AnalogyKey } from '../analogies';
-import { modeLabel, portLabel } from '../format';
+import { modeLabel, deviceLabel, portLabel } from '../format';
 import type { LabAction, LabState } from '../labReducer';
 
 export interface DevicePanelProps {
   state: LabState;
   statuses: Record<string, DeviceStatus>;
   dispatch: Dispatch<LabAction>;
+  /** True while an animation runs: sending again is disabled (S23). */
+  busy: boolean;
+  /** Starts a trip; returns the reason shown when there is no route, or null on success. */
+  onSend: (fromId: string, toId: string) => string | null;
 }
 
-export function DevicePanel({ state, statuses, dispatch }: DevicePanelProps) {
+export function DevicePanel({ state, statuses, dispatch, busy, onSend }: DevicePanelProps) {
   const { lab } = state;
   const device = state.selectedId ? getDevice(lab, state.selectedId) : undefined;
   if (!device) return null;
@@ -54,6 +58,17 @@ export function DevicePanel({ state, statuses, dispatch }: DevicePanelProps) {
       {caps.ports.length > 0 ? <PortList lab={lab} device={device} /> : null}
       <CableSection lab={lab} device={device} dispatch={dispatch} />
       <CableList lab={lab} device={device} dispatch={dispatch} />
+
+      {/* A switch has no addressing and cannot be an endpoint of a packet (D1, S23). */}
+      {device.kind === 'switch' ? null : (
+        <SendSection
+          device={device}
+          lab={lab}
+          statuses={statuses}
+          busy={busy}
+          onSend={onSend}
+        />
+      )}
 
       {isInternet ? null : (
         <section className="panel__section">
@@ -536,6 +551,101 @@ function CableList({
           );
         })}
       </ul>
+    </section>
+  );
+}
+
+interface SendTarget {
+  id: string;
+  label: string;
+}
+
+/**
+ * S23 destination list: every device of another kind, never the origin itself, and the
+ * Internet node always listed last under its own name.
+ */
+function sendTargets(lab: Lab, origin: Device, statuses: Record<string, DeviceStatus>): SendTarget[] {
+  const targets = lab.devices
+    .filter(
+      (candidate) =>
+        candidate.id !== origin.id && candidate.kind !== 'internet' && candidate.kind !== 'switch',
+    )
+    .map((candidate) => ({ id: candidate.id, label: deviceLabel(candidate, statuses[candidate.id]) }));
+
+  const internet = lab.devices.find((candidate) => candidate.kind === 'internet');
+  if (internet && origin.kind !== 'internet') targets.push({ id: internet.id, label: 'Internet' });
+  return targets;
+}
+
+/** Send control of S23: choose a destination, launch the round trip, or say why it cannot go. */
+function SendSection({
+  device,
+  lab,
+  statuses,
+  busy,
+  onSend,
+}: {
+  device: Device;
+  lab: Lab;
+  statuses: Record<string, DeviceStatus>;
+  busy: boolean;
+  onSend: (fromId: string, toId: string) => string | null;
+}) {
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{ originId: string; text: string } | null>(null);
+  const targets = sendTargets(lab, device, statuses);
+  const destination = targets.find((target) => target.id === chosenId) ?? targets[0];
+
+  // Any change in the lab can open a route, so a previous refusal is never left on screen.
+  useEffect(() => setFailure(null), [lab]);
+
+  function send() {
+    if (!destination) return;
+    const problem = onSend(device.id, destination.id);
+    setFailure(problem === null ? null : { originId: device.id, text: problem });
+  }
+
+  return (
+    <section className="panel__section">
+      <h3 className="panel__subtitle">Enviar un paquete</h3>
+      {destination ? (
+        <>
+          <div className="field">
+            <label className="field__label" htmlFor="send-destination">
+              Destino
+            </label>
+            <select
+              id="send-destination"
+              className="field__input"
+              value={destination.id}
+              disabled={busy}
+              onChange={(event) => {
+                setChosenId(event.target.value);
+                setFailure(null);
+              }}
+            >
+              {targets.map((target) => (
+                <option key={target.id} value={target.id}>
+                  {target.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="button"
+            className="button button--wide"
+            disabled={busy}
+            onClick={send}
+          >
+            Enviar
+          </button>
+        </>
+      ) : (
+        <p className="panel__note">No hay ningún otro dispositivo al que enviar.</p>
+      )}
+      {failure && failure.originId === device.id ? (
+        <p className="panel__reason">{failure.text}</p>
+      ) : null}
     </section>
   );
 }

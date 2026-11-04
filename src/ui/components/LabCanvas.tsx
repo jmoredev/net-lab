@@ -1,7 +1,16 @@
-import { useRef, useState, type Dispatch, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type DragEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import type { DeviceStatus } from '../../domain/diagnostics';
-import { getDevice } from '../../domain/lab';
+import { getDevice, type Lab } from '../../domain/lab';
 import { CAPABILITIES, type Device, type DeviceKind, type Point } from '../../domain/types';
+import { ROUND_TRIP_MS, pointAlong, roundTripProgress, routePolyline, type Travel } from '../animation';
 import { deviceLabel } from '../format';
 import { CANVAS, DEVICE_SIZE, clampPosition, deviceCenter, renderPosition } from '../geometry';
 import type { LabAction, LabState } from '../labReducer';
@@ -9,6 +18,7 @@ import { DeviceGlyph } from './DeviceGlyph';
 import { PALETTE_KINDS, PALETTE_MIME } from './DevicePalette';
 
 const GLYPH_SIZE = 40;
+const PACKET_RADIUS = 7;
 const CAPTION_GAP = 16;
 const SELECTION_INSET = 5;
 const TOOLTIP_LINE_HEIGHT = 14;
@@ -19,6 +29,11 @@ export interface LabCanvasProps {
   state: LabState;
   statuses: Record<string, DeviceStatus>;
   dispatch: Dispatch<LabAction>;
+  /** Packet on its way, owned by App and never part of the lab state (S23). */
+  travel: Travel | null;
+  /** True while an animation runs: the lab cannot be edited (S23). */
+  busy: boolean;
+  onTravelEnd: () => void;
 }
 
 interface Tooltip {
@@ -29,12 +44,55 @@ interface Tooltip {
   lines: { text: string; tone: 'plain' | 'online' | 'offline' }[];
 }
 
-export function LabCanvas({ state, statuses, dispatch }: LabCanvasProps) {
+export function LabCanvas({ state, statuses, dispatch, travel, busy, onTravelEnd }: LabCanvasProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const dragRef = useRef<{ id: string; offset: Point } | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [packet, setPacket] = useState<Point | null>(null);
   const { lab } = state;
   const isEmpty = lab.devices.every((device) => device.kind === 'internet');
+
+  const routePoints = useMemo(
+    () => (travel ? routePolyline(lab, travel.from, travel.to) : null),
+    [lab, travel],
+  );
+
+  // One marker, driven by requestAnimationFrame over the round trip (S23). The state of
+  // the lab is never touched per frame: only the packet position moves.
+  useEffect(() => {
+    if (!travel) {
+      setPacket(null);
+      return;
+    }
+    const points = routePolyline(lab, travel.from, travel.to);
+    if (!points) {
+      setPacket(null);
+      onTravelEnd();
+      return;
+    }
+
+    // With reduced motion the route is still shown for the same time, without the marker.
+    if (prefersReducedMotion()) {
+      setPacket(null);
+      const timer = window.setTimeout(() => onTravelEnd(), ROUND_TRIP_MS);
+      return () => window.clearTimeout(timer);
+    }
+
+    let frame = 0;
+    const startedAt = performance.now();
+    const step = (now: number) => {
+      const elapsed = now - startedAt;
+      setPacket(pointAlong(points, roundTripProgress(elapsed, ROUND_TRIP_MS)));
+      if (elapsed >= ROUND_TRIP_MS) {
+        setPacket(null);
+        onTravelEnd();
+        return;
+      }
+      frame = window.requestAnimationFrame(step);
+    };
+    frame = window.requestAnimationFrame(step);
+    return () => window.cancelAnimationFrame(frame);
+  }, [travel, lab, onTravelEnd]);
 
   /** Screen coordinates to canvas coordinates, whatever the SVG is scaled to. */
   function toCanvasPoint(clientX: number, clientY: number): Point {
@@ -49,6 +107,7 @@ export function LabCanvas({ state, statuses, dispatch }: LabCanvasProps) {
   }
 
   function startDrag(event: ReactPointerEvent<SVGGElement>, device: Device) {
+    if (busy) return;
     // The Internet node keeps its fixed place (S27).
     if (device.kind === 'internet') return;
     const position = renderPosition(device);
@@ -80,6 +139,7 @@ export function LabCanvas({ state, statuses, dispatch }: LabCanvasProps) {
 
   function handleDrop(event: DragEvent<SVGSVGElement>) {
     event.preventDefault();
+    if (busy) return;
     const raw = event.dataTransfer.getData(PALETTE_MIME) || event.dataTransfer.getData('text/plain');
     const kind = PALETTE_KINDS.find((candidate) => candidate === raw) as DeviceKind | undefined;
     if (!kind) return;
@@ -93,9 +153,16 @@ export function LabCanvas({ state, statuses, dispatch }: LabCanvasProps) {
 
   const hovered = state.hoveredId ? getDevice(lab, state.hoveredId) : undefined;
   const tooltip = hovered ? tooltipFor(hovered, statuses[hovered.id]) : null;
+  const caption = travel
+    ? `Enviando un paquete de ${nameOf(lab, travel.from)} a ${nameOf(lab, travel.to)}`
+    : '';
 
   return (
-    <section className="canvas-zone" aria-label="Lienzo">
+    <section className="canvas-zone" aria-label="Lienzo" aria-busy={busy}>
+      {/* S23 as amended by Q3: the caption names the trip only, with no transformations. */}
+      <p className="canvas-zone__caption" aria-live="polite">
+        {caption}
+      </p>
       <svg
         ref={svgRef}
         className="canvas"
@@ -114,7 +181,10 @@ export function LabCanvas({ state, statuses, dispatch }: LabCanvasProps) {
           y={0}
           width={CANVAS.width}
           height={CANVAS.height}
-          onClick={() => dispatch({ type: 'select', id: null })}
+          onClick={() => {
+            if (busy) return;
+            dispatch({ type: 'select', id: null });
+          }}
         />
 
         {/* Cables first, so a cable never crosses the face of an icon. */}
@@ -137,6 +207,15 @@ export function LabCanvas({ state, statuses, dispatch }: LabCanvasProps) {
             );
           })}
         </g>
+
+        {/* The route the packet travels, behind the devices so the icons stay readable. */}
+        {travel && routePoints ? (
+          <polyline
+            className="route__stroke"
+            points={routePoints.map((point) => `${point.x},${point.y}`).join(' ')}
+            pointerEvents="none"
+          />
+        ) : null}
 
         {isEmpty ? (
           <g className="canvas__empty">
@@ -168,6 +247,7 @@ export function LabCanvas({ state, statuses, dispatch }: LabCanvasProps) {
               onPointerLeave={() => dispatch({ type: 'hover', id: null })}
               onClick={(event) => {
                 event.stopPropagation();
+                if (busy) return;
                 dispatch({ type: 'select', id: device.id });
               }}
             >
@@ -202,6 +282,16 @@ export function LabCanvas({ state, statuses, dispatch }: LabCanvasProps) {
             </g>
           );
         })}
+
+        {packet ? (
+          <circle
+            className="packet"
+            cx={packet.x}
+            cy={packet.y}
+            r={PACKET_RADIUS}
+            pointerEvents="none"
+          />
+        ) : null}
 
         {tooltip ? (
           <g className="tooltip" transform={`translate(${tooltip.x} ${tooltip.y})`} pointerEvents="none">
@@ -240,6 +330,15 @@ function WifiMark({ on }: { on: boolean }) {
       <path d="M4.8 11a2.8 2.8 0 0 1 2.4 0" />
     </g>
   );
+}
+
+function nameOf(lab: Lab, deviceId: string): string {
+  return getDevice(lab, deviceId)?.name ?? 'un dispositivo';
+}
+
+/** Some students ask their system for less motion; then the route shows without the marker. */
+function prefersReducedMotion(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 /** Hover summary (S29): name, IP when it has one and whether it has Internet access. */
