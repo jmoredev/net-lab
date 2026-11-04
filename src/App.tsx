@@ -14,6 +14,8 @@ const CONFIRM_RESET = '¿Seguro que quieres vaciar el laboratorio? Se quitarán 
 export function App() {
   const [state, dispatch] = useReducer(labReducer, null, initialLabState);
   const [travel, setTravel] = useState<Travel | null>(null);
+  /** Device being dragged on the canvas: the palette turns into the trash zone (S11). */
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const statuses = useMemo(() => computeStatus(state.lab), [state.lab]);
   const hasDevices = state.lab.devices.some((device) => device.kind !== 'internet');
   // The animation state lives here and never enters the reducer (S23).
@@ -69,7 +71,7 @@ export function App() {
       ) : null}
 
       <div className="app__body">
-        <DevicePalette state={state} dispatch={dispatch} busy={busy} />
+        <DevicePalette state={state} dispatch={dispatch} busy={busy} draggingId={draggingId} />
         <LabCanvas
           state={state}
           statuses={statuses}
@@ -77,6 +79,7 @@ export function App() {
           travel={travel}
           busy={busy}
           onTravelEnd={endTravel}
+          onDeviceDragChange={setDraggingId}
         />
         <div className="app__panel" inert={busy}>
           <DevicePanel

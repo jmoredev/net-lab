@@ -8,11 +8,23 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import type { DeviceStatus } from '../../domain/diagnostics';
-import { getDevice, type Lab } from '../../domain/lab';
-import { CAPABILITIES, type Device, type DeviceKind, type Point } from '../../domain/types';
+import { getDevice, portIsFree, type Lab, type Link } from '../../domain/lab';
+import { CAPABILITIES, type Device, type DeviceKind, type Point, type PortRef } from '../../domain/types';
 import { ROUND_TRIP_MS, pointAlong, roundTripProgress, routePolyline, type Travel } from '../animation';
 import { deviceLabel } from '../format';
-import { CANVAS, DEVICE_SIZE, clampPosition, deviceCenter, renderPosition } from '../geometry';
+import {
+  CANVAS,
+  DEVICE_SIZE,
+  PORT_RADIUS,
+  clampPosition,
+  deviceCenter,
+  findPortAt,
+  portAnchorFor,
+  portAnchors,
+  renderPosition,
+  type PortAnchor,
+  type PortSide,
+} from '../geometry';
 import type { LabAction, LabState } from '../labReducer';
 import { DeviceGlyph } from './DeviceGlyph';
 import { PALETTE_KINDS, PALETTE_MIME } from './DevicePalette';
@@ -20,10 +32,14 @@ import { PALETTE_KINDS, PALETTE_MIME } from './DevicePalette';
 const GLYPH_SIZE = 40;
 const PACKET_RADIUS = 7;
 const CAPTION_GAP = 16;
+/** Extra room under the box when a bottom port with its name sits there (S32). */
+const PORT_LABEL_CLEARANCE = 13;
 const SELECTION_INSET = 5;
 const TOOLTIP_LINE_HEIGHT = 14;
 const TOOLTIP_PADDING = 10;
 const TOOLTIP_CHAR_WIDTH = 6.2;
+const DELETE_BADGE_RADIUS = 9;
+const TRASH_SELECTOR = '[data-drop="trash"]';
 
 export interface LabCanvasProps {
   state: LabState;
@@ -34,6 +50,8 @@ export interface LabCanvasProps {
   /** True while an animation runs: the lab cannot be edited (S23). */
   busy: boolean;
   onTravelEnd: () => void;
+  /** Device being dragged, so the palette can show itself as a drop zone (S11). */
+  onDeviceDragChange: (id: string | null) => void;
 }
 
 interface Tooltip {
@@ -44,11 +62,27 @@ interface Tooltip {
   lines: { text: string; tone: 'plain' | 'online' | 'offline' }[];
 }
 
-export function LabCanvas({ state, statuses, dispatch, travel, busy, onTravelEnd }: LabCanvasProps) {
+/** Marker of the round trip: where the packet is and which way it is going (S23). */
+interface Marker {
+  point: Point;
+  returning: boolean;
+}
+
+export function LabCanvas({
+  state,
+  statuses,
+  dispatch,
+  travel,
+  busy,
+  onTravelEnd,
+  onDeviceDragChange,
+}: LabCanvasProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const dragRef = useRef<{ id: string; offset: Point } | null>(null);
+  const cableDragRef = useRef<{ from: PortRef; anchor: Point } | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [packet, setPacket] = useState<Point | null>(null);
+  const [cableDrag, setCableDrag] = useState<{ from: Point; to: Point } | null>(null);
+  const [marker, setMarker] = useState<Marker | null>(null);
   const { lab } = state;
   const isEmpty = lab.devices.every((device) => device.kind === 'internet');
 
@@ -57,23 +91,28 @@ export function LabCanvas({ state, statuses, dispatch, travel, busy, onTravelEnd
     [lab, travel],
   );
 
+  const selectedLink = state.selectedLinkId
+    ? lab.links.find((link) => link.id === state.selectedLinkId)
+    : undefined;
+  const badge = selectedLink ? cableMidpoint(lab, selectedLink) : null;
+
   // One marker, driven by requestAnimationFrame over the round trip (S23). The state of
-  // the lab is never touched per frame: only the packet position moves.
+  // the lab is never touched per frame: only the packet position and its phase move.
   useEffect(() => {
     if (!travel) {
-      setPacket(null);
+      setMarker(null);
       return;
     }
     const points = routePolyline(lab, travel.from, travel.to);
     if (!points) {
-      setPacket(null);
+      setMarker(null);
       onTravelEnd();
       return;
     }
 
     // With reduced motion the route is still shown for the same time, without the marker.
     if (prefersReducedMotion()) {
-      setPacket(null);
+      setMarker(null);
       const timer = window.setTimeout(() => onTravelEnd(), ROUND_TRIP_MS);
       return () => window.clearTimeout(timer);
     }
@@ -82,9 +121,14 @@ export function LabCanvas({ state, statuses, dispatch, travel, busy, onTravelEnd
     const startedAt = performance.now();
     const step = (now: number) => {
       const elapsed = now - startedAt;
-      setPacket(pointAlong(points, roundTripProgress(elapsed, ROUND_TRIP_MS)));
+      // The phase comes from the elapsed time, not from the progress value: the way out
+      // and the way back inflect at the same moment and the colour must follow it (S23).
+      setMarker({
+        point: pointAlong(points, roundTripProgress(elapsed, ROUND_TRIP_MS)),
+        returning: elapsed >= ROUND_TRIP_MS / 2,
+      });
       if (elapsed >= ROUND_TRIP_MS) {
-        setPacket(null);
+        setMarker(null);
         onTravelEnd();
         return;
       }
@@ -93,6 +137,25 @@ export function LabCanvas({ state, statuses, dispatch, travel, busy, onTravelEnd
     frame = window.requestAnimationFrame(step);
     return () => window.cancelAnimationFrame(frame);
   }, [travel, lab, onTravelEnd]);
+
+  // A selected cable goes away with Supr or Retroceso (S33), never from a text field.
+  useEffect(() => {
+    const linkId = state.selectedLinkId;
+    if (linkId === null) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName.toLowerCase();
+      if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+      if (busy) return;
+      event.preventDefault();
+      dispatch({ type: 'disconnect-cable', linkId });
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [state.selectedLinkId, busy, dispatch]);
 
   /** Screen coordinates to canvas coordinates, whatever the SVG is scaled to. */
   function toCanvasPoint(clientX: number, clientY: number): Point {
@@ -114,6 +177,7 @@ export function LabCanvas({ state, statuses, dispatch, travel, busy, onTravelEnd
     const point = toCanvasPoint(event.clientX, event.clientY);
     dragRef.current = { id: device.id, offset: { x: point.x - position.x, y: point.y - position.y } };
     setDraggingId(device.id);
+    onDeviceDragChange(device.id);
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
@@ -129,9 +193,61 @@ export function LabCanvas({ state, statuses, dispatch, travel, busy, onTravelEnd
   }
 
   function endDrag(event: ReactPointerEvent<SVGGElement>) {
-    if (!dragRef.current) return;
+    const drag = dragRef.current;
+    if (!drag) return;
     dragRef.current = null;
     setDraggingId(null);
+    onDeviceDragChange(null);
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    // Dropped back on the palette: the device is removed instead of staying on the
+    // canvas (S11). The Internet node never gets here, so it is never deleted this way.
+    if (isOverTrash(event.clientX, event.clientY)) {
+      dispatch({ type: 'delete-device', id: drag.id });
+    }
+  }
+
+  /** Cable drag (S13): only from a free port, and never instead of a device drag. */
+  function startCableDrag(event: ReactPointerEvent<SVGCircleElement>, device: Device, anchor: PortAnchor) {
+    if (busy) return;
+    if (!portIsFree(lab, device.id, anchor.portId)) return;
+    event.stopPropagation();
+    cableDragRef.current = { from: { deviceId: device.id, portId: anchor.portId }, anchor: anchor.point };
+    setCableDrag({ from: anchor.point, to: anchor.point });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function continueCableDrag(event: ReactPointerEvent<SVGCircleElement>) {
+    const drag = cableDragRef.current;
+    if (!drag) return;
+    event.stopPropagation();
+    setCableDrag({ from: drag.anchor, to: toCanvasPoint(event.clientX, event.clientY) });
+  }
+
+  function endCableDrag(event: ReactPointerEvent<SVGCircleElement>) {
+    const drag = cableDragRef.current;
+    if (!drag) return;
+    cableDragRef.current = null;
+    setCableDrag(null);
+    event.stopPropagation();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const target = findPortAt(lab, toCanvasPoint(event.clientX, event.clientY));
+    // Dropped in the void or on the port it started from: cancelled, with no message.
+    if (target === null) return;
+    if (target.deviceId === drag.from.deviceId && target.portId === drag.from.portId) return;
+    // The reducer answers with the exact reason when the pair is not valid (S13, S14).
+    dispatch({ type: 'connect-cable', a: drag.from, b: target });
+  }
+
+  function cancelCableDrag(event: ReactPointerEvent<SVGCircleElement>) {
+    if (!cableDragRef.current) return;
+    cableDragRef.current = null;
+    setCableDrag(null);
+    event.stopPropagation();
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -184,34 +300,60 @@ export function LabCanvas({ state, statuses, dispatch, travel, busy, onTravelEnd
           onClick={() => {
             if (busy) return;
             dispatch({ type: 'select', id: null });
+            dispatch({ type: 'select-link', linkId: null });
           }}
         />
 
-        {/* Cables first, so a cable never crosses the face of an icon. */}
+        {/* Cables first, so a cable never crosses the face of an icon. They run from port
+            to port, with the device centre only as a fallback (S13, S32). */}
         <g className="cables">
           {lab.links.map((link) => {
-            const from = getDevice(lab, link.a.deviceId);
-            const to = getDevice(lab, link.b.deviceId);
-            if (!from || !to) return null;
-            const start = deviceCenter(from);
-            const end = deviceCenter(to);
+            const ends = cableEnds(lab, link);
+            if (!ends) return null;
+            const selected = state.selectedLinkId === link.id;
             return (
-              <line
-                key={link.id}
-                className="cable"
-                x1={start.x}
-                y1={start.y}
-                x2={end.x}
-                y2={end.y}
-              />
+              <g key={link.id}>
+                <line
+                  className={`cable${selected ? ' cable--selected' : ''}`}
+                  x1={ends.start.x}
+                  y1={ends.start.y}
+                  x2={ends.end.x}
+                  y2={ends.end.y}
+                />
+                {/* Wide invisible stroke: picking a 2px cable with the pointer is
+                    otherwise a lottery (S33). */}
+                <line
+                  className="cable__hit"
+                  x1={ends.start.x}
+                  y1={ends.start.y}
+                  x2={ends.end.x}
+                  y2={ends.end.y}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (busy) return;
+                    dispatch({ type: 'select-link', linkId: link.id });
+                  }}
+                />
+              </g>
             );
           })}
+          {cableDrag ? (
+            <line
+              className="cable cable--preview"
+              x1={cableDrag.from.x}
+              y1={cableDrag.from.y}
+              x2={cableDrag.to.x}
+              y2={cableDrag.to.y}
+              pointerEvents="none"
+            />
+          ) : null}
         </g>
 
         {/* The route the packet travels, behind the devices so the icons stay readable. */}
         {travel && routePoints ? (
           <polyline
-            className="route__stroke"
+            className={`route__stroke${marker?.returning ? ' route__stroke--return' : ''}`}
             points={routePoints.map((point) => `${point.x},${point.y}`).join(' ')}
             pointerEvents="none"
           />
@@ -233,6 +375,13 @@ export function LabCanvas({ state, statuses, dispatch, travel, busy, onTravelEnd
           const status = statuses[device.id];
           const selected = state.selectedId === device.id;
           const offline = Boolean(status?.reason);
+          const anchors = portAnchors(device);
+          const local = anchors.map((anchor) => ({
+            ...anchor,
+            local: { x: anchor.point.x - position.x, y: anchor.point.y - position.y },
+          }));
+          const hasBottomPort = anchors.some((anchor) => anchor.side === 'bottom');
+          const captionY = DEVICE_SIZE + CAPTION_GAP + (hasBottomPort ? PORT_LABEL_CLEARANCE : 0);
           return (
             <g
               key={device.id}
@@ -274,20 +423,72 @@ export function LabCanvas({ state, statuses, dispatch, travel, busy, onTravelEnd
               <text
                 className="device__caption"
                 x={DEVICE_SIZE / 2}
-                y={DEVICE_SIZE + CAPTION_GAP}
+                y={captionY}
                 textAnchor="middle"
               >
                 {deviceLabel(device, status)}
               </text>
+
+              {/* Ports on the border of the box, each with its name (S32). */}
+              {local.map((anchor) => {
+                const free = portIsFree(lab, device.id, anchor.portId);
+                const label = portLabelPlacement(anchor.side);
+                return (
+                  <g key={anchor.portId}>
+                    <circle
+                      className={`port ${free ? 'port--free' : 'port--used'}`}
+                      cx={anchor.local.x}
+                      cy={anchor.local.y}
+                      r={PORT_RADIUS}
+                      role="button"
+                      aria-label={`${device.name}, ${anchor.fullLabel}`}
+                      onPointerDown={(event) => startCableDrag(event, device, anchor)}
+                      onPointerMove={continueCableDrag}
+                      onPointerUp={endCableDrag}
+                      onPointerCancel={cancelCableDrag}
+                    >
+                      <title>{anchor.fullLabel}</title>
+                    </circle>
+                    <text
+                      className="port__label"
+                      x={anchor.local.x + label.dx}
+                      y={anchor.local.y + label.dy}
+                      textAnchor={label.anchor}
+                    >
+                      {anchor.label}
+                    </text>
+                  </g>
+                );
+              })}
             </g>
           );
         })}
 
-        {packet ? (
+        {/* Delete badge of the selected cable, above everything else (S33). */}
+        {badge && selectedLink ? (
+          <g
+            className="cable__badge"
+            transform={`translate(${badge.x} ${badge.y})`}
+            role="button"
+            aria-label="Eliminar el cable seleccionado"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (busy) return;
+              dispatch({ type: 'disconnect-cable', linkId: selectedLink.id });
+            }}
+          >
+            <circle r={DELETE_BADGE_RADIUS} />
+            <text textAnchor="middle" y={4}>
+              ×
+            </text>
+          </g>
+        ) : null}
+
+        {marker ? (
           <circle
-            className="packet"
-            cx={packet.x}
-            cy={packet.y}
+            className={`packet${marker.returning ? ' packet--return' : ''}`}
+            cx={marker.point.x}
+            cy={marker.point.y}
             r={PACKET_RADIUS}
             pointerEvents="none"
           />
@@ -330,6 +531,47 @@ function WifiMark({ on }: { on: boolean }) {
       <path d="M4.8 11a2.8 2.8 0 0 1 2.4 0" />
     </g>
   );
+}
+
+/** Endpoints of a cable: the port it is plugged into, or the device centre as a fallback. */
+function cableEnds(lab: Lab, link: Link): { start: Point; end: Point } | null {
+  const from = getDevice(lab, link.a.deviceId);
+  const to = getDevice(lab, link.b.deviceId);
+  if (!from || !to) return null;
+  return {
+    start: portAnchorFor(lab, link.a) ?? deviceCenter(from),
+    end: portAnchorFor(lab, link.b) ?? deviceCenter(to),
+  };
+}
+
+function cableMidpoint(lab: Lab, link: Link): Point | null {
+  const ends = cableEnds(lab, link);
+  if (!ends) return null;
+  return { x: (ends.start.x + ends.end.x) / 2, y: (ends.start.y + ends.end.y) / 2 };
+}
+
+/** Port name next to the dot, pushed away from the box so it never covers the icon. */
+function portLabelPlacement(side: PortSide): {
+  dx: number;
+  dy: number;
+  anchor: 'middle' | 'start' | 'end';
+} {
+  switch (side) {
+    case 'top':
+      return { dx: 0, dy: -PORT_RADIUS - 4, anchor: 'middle' };
+    case 'bottom':
+      return { dx: 0, dy: PORT_RADIUS + 8, anchor: 'middle' };
+    case 'left':
+      return { dx: -PORT_RADIUS - 4, dy: 3.5, anchor: 'end' };
+    case 'right':
+      return { dx: PORT_RADIUS + 4, dy: 3.5, anchor: 'start' };
+  }
+}
+
+/** Was the pointer released over the palette, which acts as the trash zone (S11)? */
+function isOverTrash(clientX: number, clientY: number): boolean {
+  if (typeof document.elementFromPoint !== 'function') return false;
+  return document.elementFromPoint(clientX, clientY)?.closest(TRASH_SELECTOR) !== null;
 }
 
 function nameOf(lab: Lab, deviceId: string): string {

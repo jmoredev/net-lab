@@ -130,3 +130,61 @@ describe('labReducer: router settings', () => {
     expect(state.message).toBe('La dirección final debe ser mayor o igual que la inicial.');
   });
 });
+
+/** A router cabled to a laptop, the smallest lab with one link to select. */
+function wiredState() {
+  let state = labReducer(initialLabState(), { type: 'add-device', kind: 'router', position: { x: 10, y: 10 } });
+  const routerId = state.selectedId as string;
+  state = labReducer(state, { type: 'add-device', kind: 'laptop', position: { x: 200, y: 10 } });
+  const laptopId = state.selectedId as string;
+  state = labReducer(state, {
+    type: 'connect-cable',
+    a: { deviceId: laptopId, portId: 'eth' },
+    b: { deviceId: routerId, portId: 'lan1' },
+  });
+  return { state, routerId, laptopId, linkId: state.lab.links[0].id };
+}
+
+describe('labReducer: cable selection (S33)', () => {
+  it('starts with no cable selected and keeps the picked one', () => {
+    const { state, linkId } = wiredState();
+    expect(state.selectedLinkId).toBeNull();
+
+    const selected = labReducer(state, { type: 'select-link', linkId });
+    expect(selected.selectedLinkId).toBe(linkId);
+    expect(selected.lab).toBe(state.lab);
+
+    expect(labReducer(selected, { type: 'select-link', linkId: null }).selectedLinkId).toBeNull();
+  });
+
+  it('clears the selection when that cable is disconnected', () => {
+    const { state, linkId } = wiredState();
+    let next = labReducer(state, { type: 'select-link', linkId });
+    next = labReducer(next, { type: 'disconnect-cable', linkId });
+    expect(next.lab.links).toHaveLength(0);
+    expect(next.selectedLinkId).toBeNull();
+  });
+
+  it('clears the selection when an endpoint device is deleted', () => {
+    const { state, linkId, laptopId } = wiredState();
+    let next = labReducer(state, { type: 'select-link', linkId });
+    next = labReducer(next, { type: 'delete-device', id: laptopId });
+    expect(next.lab.links).toHaveLength(0);
+    expect(next.selectedLinkId).toBeNull();
+  });
+
+  it('keeps the selection when another cable is disconnected or another device is deleted', () => {
+    const { state, linkId, routerId, laptopId } = wiredState();
+    let next = labReducer(state, { type: 'select-link', linkId });
+    next = labReducer(next, { type: 'disconnect-cable', linkId: 'l-unknown' });
+    expect(next.selectedLinkId).toBe(linkId);
+
+    next = labReducer(next, { type: 'add-device', kind: 'phone', position: { x: 300, y: 10 } });
+    const phoneId = next.selectedId as string;
+    next = labReducer(next, { type: 'delete-device', id: phoneId });
+    expect(next.selectedLinkId).toBe(linkId);
+    expect(next.lab.links[0].id).toBe(linkId);
+    expect(next.lab.devices.some((device) => device.id === routerId)).toBe(true);
+    expect(next.lab.devices.some((device) => device.id === laptopId)).toBe(true);
+  });
+});

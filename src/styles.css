@@ -150,6 +150,18 @@ body {
   color: var(--text-muted);
 }
 
+/* The palette doubles as the trash zone while a device is dragged (S11). */
+.palette--trash {
+  background: var(--bg);
+  outline: 2px dashed var(--accent);
+  outline-offset: -6px;
+}
+
+.palette__hint--trash {
+  font-weight: 600;
+  color: var(--accent);
+}
+
 /* Canvas */
 
 .canvas-zone {
@@ -193,6 +205,52 @@ body {
   stroke: var(--text-muted);
   stroke-width: 2.5;
   stroke-linecap: round;
+  pointer-events: none;
+}
+
+/* Wide invisible stroke over the cable, so it can be picked with the pointer (S33). */
+.cable__hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  stroke-linecap: round;
+  cursor: pointer;
+}
+
+.cable--selected {
+  stroke: var(--accent);
+  stroke-width: 4;
+}
+
+/* Cable being dragged from a port, before it is dropped on another port (S13). */
+.cable--preview {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-dasharray: 6 6;
+}
+
+.cable__badge {
+  cursor: pointer;
+}
+
+.cable__badge circle {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 2;
+  transition: fill 120ms ease;
+}
+
+.cable__badge text {
+  fill: var(--accent);
+  font-size: 13px;
+}
+
+.cable__badge:hover circle {
+  fill: var(--accent);
+}
+
+.cable__badge:hover text {
+  fill: var(--surface);
 }
 
 /* Route of the packet (S23): one highlighted stroke, so the path is visible, not only the dot. */
@@ -205,10 +263,19 @@ body {
   stroke-opacity: 0.55;
 }
 
+/* The way back travels in the colour of the connected state (S23). */
+.route__stroke--return {
+  stroke: var(--state-online);
+}
+
 .packet {
   fill: var(--accent);
   stroke: var(--surface);
   stroke-width: 1.5;
+}
+
+.packet--return {
+  fill: var(--state-online);
 }
 
 .device {
@@ -245,6 +312,34 @@ body {
   fill: var(--text-muted);
   font-size: 12px;
   pointer-events: none;
+}
+
+/* Ethernet ports on the border of the box, each with its name (S32). */
+.port {
+  stroke-width: 1.5;
+  cursor: crosshair;
+  transition: fill 120ms ease;
+}
+
+.port--free {
+  fill: var(--surface);
+  stroke: var(--text-muted);
+}
+
+.port--used {
+  fill: var(--text-muted);
+  stroke: var(--surface);
+}
+
+.port__label {
+  fill: var(--text-muted);
+  font-size: 9px;
+  pointer-events: none;
+}
+
+/* While a packet is on its way nothing on the canvas can be dragged or picked (S23). */
+.canvas-zone[aria-busy='true'] .port {
+  cursor: default;
 }
 
 .glyph {

@@ -21,6 +21,8 @@ import type { DeviceKind, Point, PortRef } from '../domain/types';
 export interface LabState {
   lab: Lab;
   selectedId: string | null;
+  /** Cable picked on the canvas, shown with its delete badge (S33). */
+  selectedLinkId: string | null;
   hoveredId: string | null;
   /** Last user-facing failure, in the exact wording of the specification. */
   message: string | null;
@@ -40,12 +42,13 @@ export type LabAction =
   | { type: 'set-router-ip'; ip: string }
   | { type: 'set-dhcp-range'; start: number; end: number }
   | { type: 'select'; id: string | null }
+  | { type: 'select-link'; linkId: string | null }
   | { type: 'hover'; id: string | null }
   | { type: 'dismiss-message' }
   | { type: 'reset' };
 
 export function initialLabState(): LabState {
-  return { lab: createLab(), selectedId: null, hoveredId: null, message: null };
+  return { lab: createLab(), selectedId: null, selectedLinkId: null, hoveredId: null, message: null };
 }
 
 export function labReducer(state: LabState, action: LabAction): LabState {
@@ -67,13 +70,17 @@ export function labReducer(state: LabState, action: LabAction): LabState {
         ...state,
         lab: result.value,
         selectedId: state.selectedId === action.id ? null : state.selectedId,
+        selectedLinkId: linkStillExists(result.value, state.selectedLinkId),
         message: null,
       };
     }
     case 'connect-cable':
       return apply(state, connectCable(state.lab, action.a, action.b));
-    case 'disconnect-cable':
-      return apply(state, disconnectCable(state.lab, action.linkId));
+    case 'disconnect-cable': {
+      const next = apply(state, disconnectCable(state.lab, action.linkId));
+      // The cable may be gone: the selection goes with it (S33).
+      return { ...next, selectedLinkId: linkStillExists(next.lab, next.selectedLinkId) };
+    }
     case 'set-ethernet':
       return apply(state, setEthernetEnabled(state.lab, action.id, action.enabled));
     case 'set-wifi':
@@ -88,6 +95,8 @@ export function labReducer(state: LabState, action: LabAction): LabState {
       return apply(state, setDhcpRange(state.lab, action.start, action.end));
     case 'select':
       return { ...state, selectedId: action.id };
+    case 'select-link':
+      return { ...state, selectedLinkId: action.linkId };
     case 'hover':
       return { ...state, hoveredId: action.id };
     case 'dismiss-message':
@@ -101,4 +110,10 @@ export function labReducer(state: LabState, action: LabAction): LabState {
 
 function apply(state: LabState, result: Result<Lab>): LabState {
   return result.ok ? { ...state, lab: result.value, message: null } : { ...state, message: result.error };
+}
+
+/** Keeps a cable selection only while that cable is still part of the lab. */
+function linkStillExists(lab: Lab, linkId: string | null): string | null {
+  if (linkId === null) return null;
+  return lab.links.some((link) => link.id === linkId) ? linkId : null;
 }

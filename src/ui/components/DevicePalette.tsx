@@ -15,13 +15,20 @@ export interface DevicePaletteProps {
   dispatch: Dispatch<LabAction>;
   /** True while an animation runs: adding devices is disabled (S23). */
   busy: boolean;
+  /** Device being dragged on the canvas: the palette becomes the trash zone (S11). */
+  draggingId: string | null;
 }
 
-export function DevicePalette({ state, dispatch, busy }: DevicePaletteProps) {
+export function DevicePalette({ state, dispatch, busy, draggingId }: DevicePaletteProps) {
   const routerTaken = state.lab.router !== null;
+  const trash = draggingId !== null;
 
   return (
-    <aside className="palette" aria-label="Paleta de dispositivos">
+    <aside
+      className={`palette${trash ? ' palette--trash' : ''}`}
+      aria-label="Paleta de dispositivos"
+      data-drop="trash"
+    >
       <h2 className="zone__title">Dispositivos</h2>
       <ul className="palette__list">
         {PALETTE_KINDS.map((kind) => {
@@ -50,7 +57,11 @@ export function DevicePalette({ state, dispatch, busy }: DevicePaletteProps) {
         })}
       </ul>
       {routerTaken ? <p className="palette__note">Ya hay un router en el laboratorio.</p> : null}
-      <p className="palette__hint">Pulsa un dispositivo para añadirlo o arrástralo al lienzo.</p>
+      {trash ? (
+        <p className="palette__hint palette__hint--trash">Suelta aquí para eliminar</p>
+      ) : (
+        <p className="palette__hint">Pulsa un dispositivo para añadirlo o arrástralo al lienzo.</p>
+      )}
     </aside>
   );
 }
