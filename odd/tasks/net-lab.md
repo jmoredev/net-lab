@@ -53,16 +53,17 @@ Verificación: el bundle servido no descarga imágenes ni modelos de terceros; e
 **S10 — WiFi del router conmutable.** El router permite activar y desactivar su WiFi; el estado se ve en el lienzo con una marca mínima y desactiva el acceso de todos los clientes inalámbricos.
 > «activar y desactivar el wifi»
 
-**S11 — Mover y eliminar dispositivos.** Arrastrar recoloca un dispositivo; eliminarlo borra también sus cables y libera sus puertos. El nodo Internet nunca se elimina (S27).
+**S11 — Mover y eliminar dispositivos.** Arrastrar recoloca un dispositivo; eliminarlo borra también sus cables y libera sus puertos. Además del botón del panel, un dispositivo se elimina arrastrándolo de vuelta sobre la paleta, que se resalta como zona de descarte mientras se arrastra. El nodo Internet nunca se elimina (S27).
 > «Se pueden eliminar dispositivos ya añadidos»
+> «Para eliminar un dispositivo se puede volver a arrastrar al panel de dispositivos y se quita del canvas.»
 
 ### C. Conexiones
 
 **S12 — Elegir el medio de conexión.** En los dispositivos que admiten más de una forma de conexión, el panel permite elegir cable o WiFi. La elección no es un diálogo previo: el panel ofrece las dos acciones a la vez y el alumnado elige actuando; la consecuencia la explica S22. La matriz de capacidades es la de D4.
 > «En los dispositivos que tengan varias formas de conexión, seleccionar si quiere conectarlo por cable o por wifi»
 
-**S13 — Cable a un puerto libre.** Al conectar por cable se elige el puerto de destino entre los puertos libres de los dispositivos compatibles (router, switch o el puerto Ethernet de otro equipo). Un puerto ocupado no aparece como destino válido.
-> «si es por cable debe de poder conectar el cable a un puerto disponible de un router o un switch»
+**S13 — Cable arrastrando de puerto a puerto.** El cable se crea arrastrando desde un puerto libre hasta un puerto libre de otro dispositivo: al pulsar un puerto aparece una previsualización del cable siguiendo el puntero y al soltar sobre un puerto compatible el cable queda creado. Soltar en el vacío o sobre un puerto ocupado o incompatible cancela sin crear nada y con el motivo de S22 o de S14 si corresponde. El panel sigue ofreciendo la lista de puertos libres como alternativa accesible.
+> «Al pinchar y arrastrar de un puerto que se genere el cable desde dicho puerto y al soltar encima del puerto de otro dispositivo que se conecten.»
 
 **S14 — Compatibilidad por tipo de dispositivo.** No se puede cablear un dispositivo sin puerto Ethernet: el móvil nunca acepta cable. Intentarlo muestra un motivo, no un fallo silencioso. ⟨D4⟩
 > «El cableado si se puede modelar, pudiendo conectar dos dispositivos con cable (si son compatibles, por ejemplo un movil no)»
@@ -127,7 +128,15 @@ Reglas de comportamiento:
 - Mientras dura la animación no se puede editar el laboratorio: paleta, lienzo y panel quedan bloqueados.
 - El switch nunca es origen ni destino: es transparente y solo aparece como tramo del camino. Los extremos son equipos finales y el nodo Internet.
 - La animación no muestra traducciones del paquete ni etapas intermedias (NAT, MAC, tablas, ARP): solo el recorrido, con la etiqueta del origen y del destino.
+- La ida y la vuelta se distinguen por color: la ida en el color de acento y la vuelta en el color de estado conectado, con el mismo marcador.
 > «La animación muestra solo el viaje con la etiqueta de origen destino, no las traducciones que se van haciendo del paquete»
+> «En un envío, cuando haya respuesta, que viaje de otro color. Ahora mismo van ambos en azul»
+
+**S32 — Puertos a la vista en el lienzo.** Cada dispositivo con puertos Ethernet muestra sus puertos como puntos sobre el borde de su caja, con el nombre del puerto visible junto al punto: `WAN`, `1`..`4` en el router, `1`..`8` en el switch, `ETH` en los equipos con un solo puerto. El puerto ocupado se distingue del libre. El nombre completo del puerto aparece en el tooltip y en el atributo accesible.
+> «En el canvas, que en cada dispositivo aparezca visualmente los puertos ethernet que tiene. POr ejemplo en el router pueden aparecer 5 puertos representados como 5 puntos. Los puertos deben de tener su nombre para que se sepan de cual és»
+
+**S33 — Eliminar un cable.** Al pulsar sobre un cable queda seleccionado y muestra una marca de borrado en su punto medio; pulsarla lo elimina. Con un cable seleccionado, la tecla `Supr` o `Retroceso` también lo elimina, sin confirmación. El panel del dispositivo sigue listando sus cables con su botón de desconectar.
+> «Para eliminar una conexión que se pinche sobre un cable y se pueda borrar, ya sea mediante una X o mediante la tecla DEL»
 
 ### G. Estado inicial y ejemplo
 
@@ -276,6 +285,7 @@ Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 | T9 | Laboratorio de ejemplo preconfigurado y vaciado | S24 | inline | pendiente |
 | T10 | Despliegue en GitHub Pages y README de aula | S1, S2 | inline | pendiente |
 | T11 | Persistencia del laboratorio en `localStorage` con descarte de datos inválidos | S31 | inline | pendiente |
+| T12 | Puertos visibles con nombre, cable arrastrando de puerto a puerto, selección y borrado de cables, borrado de dispositivo sobre la paleta y vuelta en otro color | S11, S13, S23, S32, S33 | worker | pendiente |
 
 ## Log
 
@@ -353,6 +363,17 @@ Efecto de L6: nuevas S30 (NAT en dos frases con analogía) y S31 (persistencia e
 **L7 — Estado del trabajo.** Especificación cerrada (S1–S31, D1–D16). T2 y T3 implementados: scaffold Vite + React + TS, motor de dominio con 60 tests en verde y build de 69 KB gzip. Siguiente: T4.
 
 **L8 — Capa de UI entregada (T4–T7, commit `f3b6ac4`).** Paleta, lienzo SVG, panel del dispositivo, analogías y estilos. Verificación: `tsc --noEmit` limpio, 75 tests en verde, build de 79 KB gzip. Tres tensiones de la especificación detectadas al implementar y resueltas acá: S10 vs S26.5 (la marca de WiFi se admite en el lienzo), S27 (el nodo Internet se puede pulsar para ver información de lectura, sin configuración) y S12 (las dos acciones de conexión se ofrecen a la vez, sin diálogo previo).
+
+**L11 — Cambios de interacción del usuario (texto literal):**
+
+```
+- Para eliminar un dispositivo se puede volver a arrastrar al panel de dispositivos y se quita del canvas.
+- En un envío, cuando haya respuesta, que viaje de otro color. Ahora mismo van ambos en azul
+- En el canvas, que en cada dispositivo aparezca visualmente los puertos ethernet que tiene. POr ejemplo en el router pueden aparecer 5 puertos representados como 5 puntos. Al pinchar y arrastrar de un puerto que se genere el cable desde dicho puerto y al soltar encima del puerto de otro dispositivo que se conecten. Los puertos deben de tener su nombre para que se sepan de cual és
+- Para eliminar una conexión que se pinche sobre un cable y se pueda borrar, ya sea mediante una X o mediante la tecla DEL
+```
+
+Efecto de L11: S11 ampliada (borrado por arrastre a la paleta), S13 reescrita (cable de puerto a puerto con previsualización), S23 ampliada (ida y vuelta con colores distintos), nuevas S32 (puertos visibles con nombre) y S33 (seleccionar y eliminar cables). Tarea nueva T12.
 
 **L10 — Animación entregada (T8, commit `0931e4c`).** Módulo puro de animación con 9 tests, control de envío en el panel y overlay de un solo marcador con la ruta resaltada. Verificación: `tsc` limpio, 84 tests en verde, 80 KB gzip. Dos defectos detectados al revisar la entrega y corregidos en el mismo commit: los destinos del mismo tipo estaban excluidos (un portátil no podía enviar a otro portátil) y el panel seguía editable durante la animación.
 
