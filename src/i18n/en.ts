@@ -31,8 +31,8 @@ export const EN: Record<UiKey | DomainMessageCode, string> = {
   'kind.router': 'Router',
   'kind.switch': 'Switch',
   'kind.laptop': 'Laptop',
-  'kind.desktop': 'Desktop',
-  'kind.phone': 'Phone',
+  'kind.desktop': 'PC',
+  'kind.phone': 'Smartphone',
   'kind.internet': 'Internet',
 
   // Canvas

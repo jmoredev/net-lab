@@ -34,9 +34,9 @@ export const ES: Record<UiKey | DomainMessageCode, string> = {
   // Device kinds
   'kind.router': 'Router',
   'kind.switch': 'Switch',
-  'kind.laptop': 'Portátil',
-  'kind.desktop': 'Sobremesa',
-  'kind.phone': 'Móvil',
+  'kind.laptop': 'Laptop',
+  'kind.desktop': 'PC',
+  'kind.phone': 'Smartphone',
   'kind.internet': 'Internet',
 
   // Canvas

@@ -304,8 +304,8 @@ const diagnosticCases: DiagnosticCase[] = [
       return s.status(laptop).reason as Diagnosis;
     },
     code: 'ip-duplicate',
-    params: { ip: '192.168.1.50', device: 'Sobremesa-1' },
-    text: 'La IP 192.168.1.50 ya está en uso por Sobremesa-1.',
+    params: { ip: '192.168.1.50', device: 'PC-1' },
+    text: 'La IP 192.168.1.50 ya está en uso por PC-1.',
   },
   {
     name: 'a gateway that is not the router address',

@@ -65,7 +65,7 @@ describe('storage: round trip (S31)', () => {
 
     expect(restored).toEqual(lab);
     expect(restored?.devices[2]).toMatchObject({
-      name: 'Portátil-1',
+      name: 'Laptop-1',
       position: { x: 420, y: 520 },
       addressing: 'manual',
       manualIp: '192.168.1.50',
