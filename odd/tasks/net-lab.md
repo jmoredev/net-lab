@@ -299,6 +299,7 @@ Las rutas se reevalúan al arrancar cada tarea. Rama de trabajo: `feat/net-lab`.
 | T13 | Envío por los cables y tramos WiFi discontinuos, tres colores de WiFi y arreglo del aviso de Fast Refresh | S23, S26, S34 | worker | `26d267c` |
 | T14 | Atribución `Built with Gentle-AI` en el README del repositorio | S35 | inline | `5376046` |
 | T15 | Publicación en GitHub Pages: rama `main`, entorno `github-pages` y verificación de S2 en producción | S1, S2 | inline | ver L15 |
+| T16 | Acciones del workflow a majors con Node 24 (checkout 7, setup-node 7, configure-pages 6, upload-pages-artifact 5, deploy-pages 5, pnpm/action-setup 6) | S1, S2 | inline | `e988996` |
 
 **Convención de entrega (D19):** todo cambio entra en `main` por rama y pull request, nunca por push directo; el servidor rechaza el push directo con `fatal error in commit_refs_rules`.
 
@@ -378,6 +379,10 @@ Efecto de L6: nuevas S30 (NAT en dos frases con analogía) y S31 (persistencia e
 **L7 — Estado del trabajo.** Especificación cerrada (S1–S31, D1–D16). T2 y T3 implementados: scaffold Vite + React + TS, motor de dominio con 60 tests en verde y build de 69 KB gzip. Siguiente: T4.
 
 **L8 — Capa de UI entregada (T4–T7, commit `f3b6ac4`).** Paleta, lienzo SVG, panel del dispositivo, analogías y estilos. Verificación: `tsc --noEmit` limpio, 75 tests en verde, build de 79 KB gzip. Tres tensiones de la especificación detectadas al implementar y resueltas acá: S10 vs S26.5 (la marca de WiFi se admite en el lienzo), S27 (el nodo Internet se puede pulsar para ver información de lectura, sin configuración) y S12 (las dos acciones de conexión se ofrecen a la vez, sin diálogo previo).
+
+**L17 — Acciones del workflow a Node 24 (commit `e988996`).** El run de L15 avisaba que cinco acciones declaraban Node 20 deprecado. Se subieron a su último major verificando en cada `action.yml` que declare `runs.using: node24` y que conserve los inputs del workflow. El deploy posterior siguió en verde y la anotación de Node 20 desapareció: los dos jobs quedan con una única anotación, informativa, sobre la migración de `ubuntu-latest` a Ubuntu 26 en octubre de 2026.
+
+Se deja `ubuntu-latest` a propósito: nada del job depende de la imagen, y fijarla obligaría a mantenimiento manual en cada retirada de runner. El push de este cambio tuvo que ir por SSH con la clave del usuario, porque el token de `gh` no tiene el scope `workflow` y GitHub prohíbe por esa vía tocar `.github/workflows/`.
 
 **L16 — Flujo de entrega decidido por el usuario (texto literal):**
 
