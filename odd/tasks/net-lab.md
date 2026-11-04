@@ -195,6 +195,7 @@ Verificación: montar un laboratorio, recargar y encontrar el mismo estado; corr
 
 - Máscaras de subred distintas de /24, VLAN, enrutamiento entre routers. NAT se explica de forma resumida en el panel del router (S30), no en profundidad.
 - Modelos 3D, sonido, multijugador, backend, cuentas de usuario.
+- Tests de extremo a extremo con navegador real: descartados por D20.
 - Fidelidad de protocolos a nivel de paquete: la animación es didáctica, no una captura real.
 
 ## Decisiones
@@ -244,6 +245,8 @@ Un sobremesa sin WiFi es discutible, pero hace el ejercicio más claro; si prefi
 **D16 — Sistema visual mínimo. *(aprobada)*** Neutros + un acento + dos colores de estado (verde conectado, rojo sin conexión) + un gris para «desactivado», tipografía de sistema, densidad baja, controles grandes. Es la aterrización de S26: si un elemento no informa ni se acciona, no se dibuja.
 
 **D17 — Un solo router por laboratorio. *(aprobada)*** Dos routers obligan a enrutar entre subredes, que está fuera de alcance: el modelo quedaría a medias. La paleta no ofrece un segundo router y responde `Ya hay un router en el laboratorio.`
+
+**D20 — Sin tests de extremo a extremo. *(aprobada)*** No se adopta Playwright ni ninguna otra herramienta de navegador real. Las conductas que jsdom no puede probar —entrega real de eventos del navegador, captura de puntero fuera del SVG, escalado del viewBox y tacto— quedan cubiertas por la prueba manual en el aula, que pasa a ser su criterio de aceptación.
 
 **D18 — Puerta de enlace manual en modo manual. *(aprobada)*** El motivo 8 de S22 solo es alcanzable si el alumnado puede escribir una puerta de enlace distinta de la del router, así que en modo manual el panel la expone (por defecto, la del router). La fila 10 de S22 (router con cable WAN pero sin dirección) es una red de seguridad que no debería darse nunca en un estado coherente; se mantiene para que el modelo sea total.
 
@@ -381,6 +384,14 @@ Efecto de L6: nuevas S30 (NAT en dos frases con analogía) y S31 (persistencia e
 **L7 — Estado del trabajo.** Especificación cerrada (S1–S31, D1–D16). T2 y T3 implementados: scaffold Vite + React + TS, motor de dominio con 60 tests en verde y build de 69 KB gzip. Siguiente: T4.
 
 **L8 — Capa de UI entregada (T4–T7, commit `f3b6ac4`).** Paleta, lienzo SVG, panel del dispositivo, analogías y estilos. Verificación: `tsc --noEmit` limpio, 75 tests en verde, build de 79 KB gzip. Tres tensiones de la especificación detectadas al implementar y resueltas acá: S10 vs S26.5 (la marca de WiFi se admite en el lienzo), S27 (el nodo Internet se puede pulsar para ver información de lectura, sin configuración) y S12 (las dos acciones de conexión se ofrecen a la vez, sin diálogo previo).
+
+**L20 — E2E descartado por el usuario (texto literal):**
+
+```
+Ahora mismo descartamos el E2E con Playwright
+```
+
+Efecto de L20: queda la decisión D20 y el E2E sale del alcance del proyecto. La verificación de esas conductas pasa a ser la prueba manual en el aula, que ya estaba en el plan.
 
 **L19 — Accesibilidad del lienzo (T18).** Dos huecos detectados al escribir los tests de L18 y corregidos: la marca de WiFi comunicaba su estado solo por color —el `<title>` de un `<g>` no lo anuncia un lector de pantalla— y ahora lleva `role="img"` con nombre accesible; los cables solo se podían seleccionar con el puntero y ahora son enfocables, con anillo de foco visible y `Intro`/espacio para seleccionar, de modo que `Supr` también funciona sin ratón. Dos tests nuevos: 141 en total.
 
