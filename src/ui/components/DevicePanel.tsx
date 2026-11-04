@@ -380,9 +380,13 @@ function RouterControls({
         min={2}
         max={254}
         value={String(router.dhcpStart)}
-        onCommit={(value) =>
-          dispatch({ type: 'set-dhcp-range', start: Number(value), end: router.dhcpEnd })
-        }
+        onCommit={(value) => {
+          const start = Number.parseInt(value, 10);
+          // An empty field must not reach the domain as 0: it would answer with the
+          // subnet error instead of reverting, so the field simply keeps its value.
+          if (!Number.isInteger(start)) return;
+          dispatch({ type: 'set-dhcp-range', start, end: router.dhcpEnd });
+        }}
       />
       <TextField
         id="router-dhcp-end"
@@ -391,9 +395,11 @@ function RouterControls({
         min={2}
         max={254}
         value={String(router.dhcpEnd)}
-        onCommit={(value) =>
-          dispatch({ type: 'set-dhcp-range', start: router.dhcpStart, end: Number(value) })
-        }
+        onCommit={(value) => {
+          const end = Number.parseInt(value, 10);
+          if (!Number.isInteger(end)) return;
+          dispatch({ type: 'set-dhcp-range', start: router.dhcpStart, end });
+        }}
       />
     </section>
   );
