@@ -59,6 +59,23 @@ function renderDialog(initialMeta: CaseMeta | null, onExported = vi.fn(), onClos
   );
 }
 
+/** The same dialog with `open` under the test's control, so it can be closed and reopened. */
+function renderOpenable(initialMeta: CaseMeta | null): (open: boolean) => void {
+  const view = (open: boolean) => (
+    <LanguageProvider>
+      <ExportDialog
+        open={open}
+        lab={lab}
+        initialMeta={initialMeta}
+        onClose={vi.fn()}
+        onExported={vi.fn()}
+      />
+    </LanguageProvider>
+  );
+  const result = render(view(true));
+  return (open: boolean) => result.rerender(view(open));
+}
+
 beforeEach(() => window.localStorage.clear());
 afterEach(() => {
   cleanup();
@@ -154,6 +171,37 @@ describe('ExportDialog: copying tells the truth (S52)', () => {
     expect(execCommand).toHaveBeenCalledWith('copy');
     expect(link.selectionStart).toBe(0);
     expect(link.selectionEnd).toBe(link.value.length);
+  });
+});
+
+describe('ExportDialog: the stamp ages with the link (S52)', () => {
+  it('drops the copy stamp as soon as a field changes', async () => {
+    const user = userEvent.setup();
+    stubClipboard(() => Promise.resolve());
+    renderDialog(meta);
+
+    await user.click(screen.getByRole('button', { name: 'Copiar enlace' }));
+    await waitFor(() => expect(statusText()).toBe('Enlace copiado.'));
+
+    // The link on screen is no longer the one in the clipboard, so the stamp has to go.
+    await user.type(screen.getByLabelText('Título'), ' y algo más');
+
+    expect(statusText()).toBe('');
+  });
+
+  it('shows no stamp when the dialog is reopened after a copy', async () => {
+    const user = userEvent.setup();
+    stubClipboard(() => Promise.resolve());
+    const setOpen = renderOpenable(meta);
+
+    await user.click(screen.getByRole('button', { name: 'Copiar enlace' }));
+    await waitFor(() => expect(statusText()).toBe('Enlace copiado.'));
+
+    setOpen(false);
+    expect(screen.queryByRole('status')).toBeNull();
+    setOpen(true);
+
+    expect(statusText()).toBe('');
   });
 });
 
