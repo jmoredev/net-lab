@@ -441,4 +441,13 @@ El tope del documento pasó a `MAX_CASE_DOCUMENT_TEXT = 2 * MAX_CASE_TEXT`. La r
 
 En el diálogo de exportación, el sello «Enlace copiado.» sobrevivía a editar el título, la consigna o el autor, y también a cerrar y reabrir: afirmaba una copia de un enlace que ya no estaba en el portapapeles, contra S52. Ahora una sola función —`edit`— actualiza el campo y limpia el estado a la vez, las tres entradas pasan por ella, y el efecto de apertura limpia el sello, así que reabrir nunca muestra uno viejo.
 
-Verificación: `pnpm typecheck` limpio. `pnpm test`: **311 de 312** en verde en 23 archivos, con cinco tests nuevos en verde (tres del documento, dos del sello). Queda rojo un test que fijaba el tope viejo del documento —`src/domain/__tests__/case.paths.test.ts`, el caso «too big to be one», que da por rechazado un documento de 17 000 bytes ahora legal—: es una línea de ese fichero, fuera de la superficie autorizada del worker, y va listada como el pendiente de esta corrección.
+Verificación: `pnpm typecheck` limpio y **312 tests en verde** en 23 archivos, con cinco tests nuevos (tres del documento, dos del sello). El test que fijaba el tope viejo del documento —`src/domain/__tests__/case.paths.test.ts`, el caso «too big to be one»— se reapuntó al tope nuevo con caracteres de tres bytes, para que siga midiendo el tope del documento y no el del enlace. La revisión cerró después con validación dirigida.
+
+**L10 — La revisión nativa del tramo de dominio encontró una asimetría real, y quedó fijada.** (Entrada del tramo 1b, conservada al mergear `feat/casos-domain`; se renumera para no chocar con la L7 de T5.)
+
+El revisor de resiliencia del tramo de dominio levantó R4-001 como crítico: `parseLab` confía en `validateLab`, que no aplica los topes de S47, mientras `encodeCase` sí los aplica, así que un laboratorio guardado con más de 20 dispositivos se vería pero no se podría exportar, contra S49. La autoridad lo admitió con `unknown_causality` (`unverified_location`: el renglón citado no era donde viviría el defecto) y la revisión escaló en lugar de aprobar. Comprobado en el código: los otros dos estados del hallazgo no son alcanzables — `renameDevice` ya rechaza el nombre vacío y el de 41 caracteres desde antes de esta feature, y la paleta ya rechaza el dispositivo 21 (D29) —, así que lo único alcanzable es un laboratorio guardado por un build sin tope.
+
+La asimetría se sostiene y es la decisión correcta, porque las dos alternativas son peores: forzar el tope al cargar tiraría el trabajo del alumno, y sacarlo del codificador produciría un caso que la importación rechaza. `src/ui/__tests__/storage.test.ts` fija los tres pasos: carga, el codificador lo rechaza con `demasiados-dispositivos` y `{ n: 21 }`, y vuelve a exportarse apenas sobra un dispositivo.
+
+Verificación: `tsc` limpio y **268 tests en verde** en 19 archivos.
+
