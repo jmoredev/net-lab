@@ -8,7 +8,7 @@ Estado: D26–D33 aprobadas por el usuario. En implementación, empezando por T1
 
 **S43 — El caso viaja en el fragmento de la URL.** Formato `https://jmoredev.github.io/net-lab/#c=<payload>`. El fragmento no se envía al servidor, así que no queda en los logs de GitHub Pages ni en los referrers, no necesita el truco del `404.html` de las SPA y sobrevive a un cambio de dominio. Nunca se usa la query.
 
-**S44 — Sobre versionado y solo hacia atrás.** El payload decodificado es `{ "v": 1, "caso"?: {…}, "lab": {…} }`. `v` se valida antes que cualquier otra cosa. `v` ausente, no entero o distinto de `1` se rechaza con `version-no-soportada`: nunca se intenta interpretar. Un caso creado hoy debe abrirse mañana; lo contrario no.
+**S44 — Sobre versionado y solo hacia atrás.** El payload decodificado es `{ "v": 1, "caso"?: {…}, "lab": {…} }`. `v` se valida antes que cualquier otra cosa. Un JSON que no es un objeto no es un caso y se rechaza como `formato-invalido`, sin hablar de versiones. `v` ausente, no entero o distinto de `1` se rechaza con `version-no-soportada`: nunca se intenta interpretar. Un caso creado hoy debe abrirse mañana; lo contrario no.
 
 **S45 — El esquema del laboratorio es el modelo de dominio, sin inventar nada.** Mapeo exacto entre el payload y `Lab` / `Device` / `Link` / `RouterSettings` (`src/domain/types.ts:10-53`):
 
@@ -24,8 +24,8 @@ Estado: D26–D33 aprobadas por el usuario. En implementación, empezando por T1
 | `dispositivos[].eth` | `ethernetEnabled` | Booleano |
 | `dispositivos[].wifi` | `wifiEnabled` | Booleano |
 | `dispositivos[].asoc` | `wifiAssociated` | Booleano. **Sin este campo, el diagnóstico no sobrevive la ida y vuelta** |
-| `dispositivos[].ip` ausente | `addressing: 'dhcp'`, `manualIp: null`, `manualGateway: null` | El modo se deriva de la presencia del campo |
-| `dispositivos[].ip: {ip, gw?}` | `addressing: 'manual'` + `manualIp` + `manualGateway` | `ip` obligatoria y IPv4 válida; `gw` IPv4 o `null`. Sin `gw`, `gateway-wrong` deja de ser alcanzable |
+| `dispositivos[].ip` ausente | `addressing: 'dhcp'` en los tipos direccionables; `manual` en router, switch e Internet | El modo se deriva de la presencia del campo **y del tipo**: el dominio construye los no direccionables como `manual`, así que escribirlos siempre contradiría el ejemplo del esquema y el modo no volvería |
+| `dispositivos[].ip: {ip, gw?}` | `addressing: 'manual'` + `manualIp` + `manualGateway` | `ip` es IPv4 válida o `null`; `gw` es IPv4 o `null`. `null` es legal porque `setAddressing` acepta el modo manual sin dirección y S49 exige exportar cualquier estado. Sin `gw`, `gateway-wrong` deja de ser alcanzable |
 | `cables[] = {a, b}` | `Link` con `PortRef {deviceId, portId}` | Extremo `[índice, portId]`. **`portId` es string** (`wan`, `lan1`..`lan4`, `p1`..`p8`, `eth`), nunca un índice: `src/domain/types.ts:124-131` |
 
 No se serializa estado redundante: ni `addressing` (se deriva), ni `router.deviceId` (es el dispositivo de tipo `router`), ni `mac` (se deriva del `seq` reconstruido), ni `id` de dispositivos o cables, ni nada de UI (zoom, selección, idioma, animación).
@@ -75,7 +75,7 @@ La cadena cruda se mide **antes** de llamar a `atob`: un `#c=` de 10 MB pegado p
 | `cable-invalido` | «Hay un cable que no se puede conectar: {detalle}» | "There is a cable that cannot be connected: {detalle}" |
 | `payload-demasiado-grande` | «El enlace es demasiado largo para abrirlo ({n} caracteres, máximo {max}).» | "The link is too long to open ({n} characters, maximum {max})." |
 
-`{campo}` es una ruta estable y documentada (`dispositivos[3].ip`). `{detalle}` **reutiliza el mensaje ya traducido del dominio** —`port-occupied`, `port-missing`, `self-connection`, `wan-only-internet`… (`src/domain/types.ts:73-102`)— en lugar de inventar códigos nuevos para lo que el dominio ya sabe decir. Esto también hace que el mensaje de un cable inválido sea idéntico al que el alumno vería al intentar ese cable en la app.
+`{campo}` es una ruta estable y documentada **en el vocabulario del payload**, que es lo que un docente puede editar: sin el nodo Internet —que no viaja— y con los nombres cortos del esquema. Un problema de dirección manual en el segundo dispositivo es `dispositivos[1].ip.ip`, no `lab.devices[2].manualIp`; un rango invertido es `router.dhcp.desde`, no `lab.router.dhcpStart`; un problema con el conjunto es `dispositivos`. `{detalle}` **reutiliza el mensaje ya traducido del dominio** —`port-occupied`, `port-missing`, `self-connection`, `wan-only-internet`… (`src/domain/types.ts:73-102`)— en lugar de inventar códigos nuevos para lo que el dominio ya sabe decir. Esto también hace que el mensaje de un cable inválido sea idéntico al que el alumno vería al intentar ese cable en la app.
 
 **S58 — Arrancar con `#c=` importa y limpia el fragmento.** Si la URL trae `#c=` al cargar, se importa antes de leer el almacenamiento. Tras importar se limpia el fragmento con `history.replaceState`, en el éxito y en el error: si no, un F5 vuelve a importar y borra el trabajo del alumno, que es el bug más caro de esta funcionalidad y no se ve en la demo. Un caso inválido no sobrescribe nada y deja el laboratorio guardado como estaba. Con un laboratorio propio guardado, el arranque pide confirmación antes de reemplazarlo (D31).
 
@@ -152,9 +152,9 @@ Note que el índice `0` es el primer dispositivo de `dispositivos` (el router) y
 | ID | Tarea | Specs | Ruta | Commit |
 | --- | --- | --- | --- | --- |
 | T1 | Validador estricto de `Lab` en el dominio; `storage.ts` pasa a llamador | S60, D30 | inline | `49d8e47`, `795d454` |
-| T2 | Codec: sobre versionado, base64url UTF-8, límites y los seis códigos | S43, S44, S47, S48, S57, S59 | worker | — |
-| T3 | Payload validado → `Lab`: ids y `seq` deterministas, Internet implícito, cableado por índice | S45, S46, S61 | worker | — |
-| T4 | Tope de 20 dispositivos en la paleta, con su mensaje y sus tests | S47, D29 | worker | — |
+| T2 | Codec y construcción del laboratorio: sobre versionado, base64url UTF-8, límites medidos antes de `atob`, los seis códigos, ids y `seq` deterministas e Internet implícito | S43–S48, S57, S59, S61 | worker | `6370bf2`, `e56511c` |
+| T3 | *(absorbida por T2)* Separarla exigiría validar cables sin el laboratorio armado, que es exactamente la lógica de puertos que no se quiere tener dos veces | S45, S46, S61 | — | — |
+| T4 | Tope de 20 dispositivos en la paleta, con su mensaje y sus tests | S47, D29 | inline | `10830e2` |
 | T5 | Panel del caso, persistido en `net-lab:caso:v1` | S45, D32 | worker | — |
 | T6 | Diálogo de exportación: enlace, `.json`, portapapeles con fallback | S49, S50, S51, S52 | worker | — |
 | T7 | Diálogo de importación: campo, fichero, confirmación, errores | S53, S54, S55, S56 | worker | — |
@@ -398,3 +398,29 @@ Verificación: `tsc` limpio y **210 tests en verde**, 34 nuevos (27 del validado
 Consecuencia para el método: la regla «lo que el dominio construye debe pasar el validador» ahora tiene tests propios en `labSchema.test.ts`, incluido el laboratorio del ejemplo precargado. Dos fixtures tuvieron que mover el rango antes de fijar la dirección del router, porque construían justo el estado que ahora se prohíbe; no se cambió ninguna aserción ni se quitó cobertura.
 
 Verificación final de T1: `tsc` limpio y **215 tests en verde**.
+
+**L5 — T2 entregada (`6370bf2`, `e56511c`).** El codec vive en `src/domain/case.ts` y no valida: mapea, acota y llama al validador de T1. Los seis códigos de S57 son un tipo propio, `CaseMessageCode`, con los nombres que fijó el usuario en R9 aunque el resto de los códigos del dominio estén en inglés, y `MessageKey` más los dos diccionarios los cubren: una traducción que falte es un error de compilación.
+
+La ida y vuelta es determinista: el nodo Internet se reconstruye desde el dominio para que conserve su id fijo, el dispositivo `i` del payload pasa a `d(i+1)` con `macFor(i+1)`, el cable `j` a `l(n+1+j)` y `seq` a `n+m+1`. Codificar, decodificar y volver a codificar produce el mismo byte.
+
+**Una regla que el documento no había cerrado.** D27 decía que el modo se deriva de la presencia de `ip`, pero el dominio construye router, switch e Internet como `manual` porque no son direccionables: escrito al pie de la letra, cada router viajaría con `"ip": {"ip": null}` y el modo se perdería al volver, porque «sin `ip`» significa DHCP. La regla quedó dependiente del tipo, como dice S45.
+
+**El verificador pidió dos cosas más, y tenía razón.** El `{campo}` mezclaba dos vocabularios —`dispositivos[3].n` para lo que detecta el codec, `lab.devices[4].manualIp` para lo que detecta el validador, con el índice corrido un lugar porque el nodo Internet no viaja—; ahora se traduce al vocabulario del payload. Y un JSON que no es objeto (`null`, `[1,2]`, `5`) se reportaba como problema de versión; ahora es `formato-invalido`, porque no hay versión de la que hablar. Doce tests nuevos fijan las dos cosas.
+
+Verificación: `tsc` limpio y **262 tests en verde** en 18 archivos. El verificador independiente probó las ocho afirmaciones del encargo con sondas propias —incluida una matriz de diez filas de direccionamiento, un espía sobre `atob` que confirma cero llamadas al rechazar un código de 20 MB, y dieciséis entradas hostiles sin un solo `throw`— y las ocho se sostienen.
+
+**L6 — T4 entregada (`10830e2`).** El camino ya existía: `labReducer` guarda `message`, `messageCode` y `messageParams`, y `App.tsx:114` traduce por código. Lo que faltaba era que **todas** las ramas lo hicieran. `delete-device` era la única que solo guardaba el texto: con la interfaz en inglés, negarse a borrar el nodo Internet mostraba la frase en español. Y su rama de éxito dejaba el `messageCode` viejo colgado, así que un fallo seguido de un borrado bueno seguía mostrando el error viejo, porque el banner pinta el código cuando está. Las dos se cerraron pasando la rama por `failed()`.
+
+La mitad visible: la paleta desactiva sus botones al llegar a `MAX_DEVICES` y lo dice, como ya hacía con el router. El nodo Internet no cuenta, así que el número significa lo mismo que el del payload.
+
+Límite conocido: que la paleta desactive los botones no tiene test de DOM (serían veinte clics por test); lo que sí está probado es el código del fallo y su texto. La guardia de verdad es la del dominio.
+
+Verificación: `tsc` limpio y **267 tests en verde** en 19 archivos.
+
+**L7 — La revisión nativa encontró una asimetría real, y ahora está fijada.**
+
+El revisor de resiliencia del tramo de dominio levantó R4-001 como crítico: `parseLab` confía en `validateLab`, que no aplica los topes de S47, mientras `encodeCase` sí los aplica, así que un laboratorio guardado con más de 20 dispositivos se vería pero no se podría exportar, contra S49. La autoridad lo admitió con `unknown_causality` (`unverified_location`: el renglón citado no era donde viviría el defecto) y la revisión escaló en lugar de aprobar. Comprobado en el código: los otros dos estados del hallazgo no son alcanzables — `renameDevice` ya rechaza el nombre vacío y el de 41 caracteres desde antes de esta feature, y la paleta ya rechaza el dispositivo 21 (D29) —, así que lo único alcanzable es un laboratorio guardado por un build sin tope.
+
+La asimetría se sostiene y es la decisión correcta, porque las dos alternativas son peores: forzar el tope al cargar tiraría el trabajo del alumno, y sacarlo del codificador produciría un caso que la importación rechaza. `src/ui/__tests__/storage.test.ts` fija los tres pasos: carga, el codificador lo rechaza con `demasiados-dispositivos` y `{ n: 21 }`, y vuelve a exportarse apenas sobra un dispositivo.
+
+Verificación: `tsc` limpio y **268 tests en verde** en 19 archivos.

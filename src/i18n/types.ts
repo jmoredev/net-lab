@@ -5,12 +5,12 @@
  * literal left in a component is a bug and a key missing from a dictionary fails to compile.
  */
 
-import type { DomainMessageCode } from '../domain/types';
+import type { CaseMessageCode, DomainMessageCode } from '../domain/types';
 
 export type Lang = 'es' | 'en';
 
 /** Every message the domain can produce, re-exported so one type covers the whole catalogue. */
-export type { DomainMessageCode, MessageParams } from '../domain/types';
+export type { CaseMessageCode, DomainMessageCode, MessageParams } from '../domain/types';
 
 /**
  * Interface strings, grouped by the zone of the screen that owns them. The names are
@@ -32,6 +32,7 @@ export type UiKey =
   | 'palette.label'
   | 'palette.title'
   | 'palette.routerTaken'
+  | 'palette.full'
   | 'palette.hint'
   | 'palette.trashHint'
   // Device names of the palette, resolved instead of `CAPABILITIES[kind].label` (S40).
@@ -107,5 +108,5 @@ export type UiKey =
   | 'send.noRoute'
   | 'send.unknownDestination';
 
-/** Any key of the catalogue: an interface string or a domain message. */
-export type MessageKey = UiKey | DomainMessageCode;
+/** Any key of the catalogue: an interface string, a domain message or a case failure (S57). */
+export type MessageKey = UiKey | DomainMessageCode | CaseMessageCode;

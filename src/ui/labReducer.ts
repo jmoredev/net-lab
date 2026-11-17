@@ -87,13 +87,14 @@ export function labReducer(state: LabState, action: LabAction): LabState {
       return apply(state, renameDevice(state.lab, action.id, action.name));
     case 'delete-device': {
       const result = deleteDevice(state.lab, action.id);
-      if (!result.ok) return { ...state, message: result.error };
+      if (!result.ok) return failed(state, result);
       return {
         ...state,
         lab: result.value,
         selectedId: state.selectedId === action.id ? null : state.selectedId,
         selectedLinkId: linkStillExists(result.value, state.selectedLinkId),
         message: null,
+        messageCode: null,
       };
     }
     case 'connect-cable':

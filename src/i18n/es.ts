@@ -1,4 +1,4 @@
-import type { DomainMessageCode } from '../domain/types';
+import type { CaseMessageCode, DomainMessageCode } from '../domain/types';
 import type { UiKey } from './types';
 
 /**
@@ -10,7 +10,7 @@ import type { UiKey } from './types';
  * the raw `MessageParams` the domain already carries (D21). The Spanish texts of the
  * domain messages double as the internal fallback the domain returns (S40).
  */
-export const ES: Record<UiKey | DomainMessageCode, string> = {
+export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   // Shell
   'app.title': 'Net-Lab — laboratorio de redes',
   'header.loadExample': 'Cargar ejemplo',
@@ -28,6 +28,7 @@ export const ES: Record<UiKey | DomainMessageCode, string> = {
   'palette.label': 'Paleta de dispositivos',
   'palette.title': 'Dispositivos',
   'palette.routerTaken': 'Ya hay un router en el laboratorio.',
+  'palette.full': 'El laboratorio ya tiene {max} dispositivos.',
   'palette.hint': 'Pulsa un dispositivo para añadirlo o arrástralo al lienzo.',
   'palette.trashHint': 'Suelta aquí para eliminar',
 
@@ -156,4 +157,12 @@ export const ES: Record<UiKey | DomainMessageCode, string> = {
   'invalid-client-ipv4': 'Escribe una dirección IPv4 válida, por ejemplo 192.168.1.20.',
   'invalid-gateway': 'Escribe una puerta de enlace válida, por ejemplo 192.168.1.1.',
   'address-not-assignable': 'Este dispositivo no tiene dirección IP.',
+
+  // Case import and export (S57). The six codes are pinned in Spanish on purpose.
+  'formato-invalido': 'El enlace no contiene un caso válido. Comprueba que lo copiaste completo.',
+  'version-no-soportada': 'Este caso se creó con otra versión de Net-Lab ({v}). Esta versión no puede abrirlo.',
+  'esquema-invalido': 'Al caso le falta un dato o tiene un valor que Net-Lab no acepta: {campo}.',
+  'demasiados-dispositivos': 'El caso tiene {n} dispositivos y el máximo es 20.',
+  'cable-invalido': 'Hay un cable que no se puede conectar: {detalle}',
+  'payload-demasiado-grande': 'El enlace es demasiado largo para abrirlo ({n} caracteres, máximo {max}).',
 };
