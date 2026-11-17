@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { decodeCase } from '../case';
+import { decodeCase, encodeCase } from '../case';
+import { createExampleLab } from '../example';
 
 /** The payload of a case, base64url encoded, without going through `encodeCase`. */
 const code = (payload: unknown): string => {
@@ -80,6 +81,39 @@ describe('case: the {campo} path is spoken in payload terms (S57)', () => {
     expect(campoOf(code(payload({ dispositivos: [routerDevice(), laptop({ n: 'Router' })] })))).toBe(
       'dispositivos[1].n',
     );
+  });
+});
+
+describe('case: the downloaded document is a case too (S50, R6)', () => {
+  it('reads back the .json the export writes', () => {
+    const lab = createExampleLab();
+    const encoded = encodeCase({ meta: null, lab });
+    expect(encoded.ok).toBe(true);
+    if (!encoded.ok) return;
+
+    expect(JSON.parse(encoded.json)).toMatchObject({ v: 1 });
+    const decoded = decodeCase(encoded.json);
+    expect(decoded.ok).toBe(true);
+    if (!decoded.ok) return;
+    expect(decoded.data.lab.devices).toHaveLength(lab.devices.length);
+  });
+
+  it('accepts a document pasted as text, indentation and all', () => {
+    const encoded = encodeCase({ meta: null, lab: createExampleLab() });
+    if (!encoded.ok) throw new Error('expected the example lab to encode');
+
+    expect(decodeCase(`\n  ${encoded.json}\n`).ok).toBe(true);
+  });
+
+  it('refuses a document that is not JSON, or too big to be one', () => {
+    expect(decodeCase('{ this is not json').ok).toBe(false);
+
+    // 17 000 characters stay under the 24 000 character cap, and three-byte characters put the
+    // document past MAX_CASE_DOCUMENT_TEXT, so this case still pins the document byte cap (S50).
+    const huge = `{"v":1,"lab":{"dispositivos":[],"cables":[]},"x":"${'好'.repeat(17000)}"}`;
+    const result = decodeCase(huge);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.failure.code).toBe('payload-demasiado-grande');
   });
 });
 

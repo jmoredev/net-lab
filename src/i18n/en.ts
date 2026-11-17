@@ -10,10 +10,29 @@ export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   // Shell
   'app.title': 'Net-Lab — network lab',
   'header.loadExample': 'Load example',
+  'case.label': 'Case brief',
+  'case.untitled': 'Untitled case',
+  'case.by': 'By {author}',
   'header.clearLab': 'Clear lab',
+  'header.shareCase': 'Share case',
   'banner.dismiss': 'Dismiss',
   'confirm.loadExample': 'Load the example? Every device and cable in the lab will be removed.',
   'confirm.clearLab': 'Clear the lab? Every device and cable will be removed.',
+
+  // Export dialog (S50–S52)
+  'export.title': 'Share the case',
+  'export.hint':
+    'Copy the link or download the file. The three fields are optional: leave them empty to share only the lab.',
+  'export.fieldTitle': 'Title',
+  'export.fieldBrief': 'Brief',
+  'export.fieldAuthor': 'Author',
+  'export.linkLabel': 'Case link',
+  'export.actionCopy': 'Copy link',
+  'export.actionDownload': 'Download .json',
+  'export.copied': 'Link copied.',
+  'export.copyManual': 'It could not be copied on its own. The link is selected: press Ctrl+C.',
+  'export.downloaded': 'Download started: {file}',
+  'export.close': 'Close',
 
   // Language switcher (S36)
   'lang.switcher': 'Language',

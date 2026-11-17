@@ -56,11 +56,21 @@ export const MAX_CASE_TEXT = 24_000;
 /** Cap of the decoded payload in UTF-8 bytes (S47). */
 export const MAX_CASE_BYTES = 16_384;
 
+/**
+ * Cap of the indented `.json` document in UTF-8 bytes (S50, S53).
+ *
+ * The document is a pretty-printed rendering of a payload that is already capped by
+ * `MAX_CASE_BYTES`, and pretty JSON is always bigger than the compact form, so its ceiling is
+ * proportional — twice the link text — instead of the payload's own. A legal lab must always be
+ * importable from the file it just downloaded, whatever the rendering costs (S49, S50).
+ */
+export const MAX_CASE_DOCUMENT_TEXT = 2 * MAX_CASE_TEXT;
+
 export const MAX_CASE_TITLE = 80;
 export const MAX_CASE_BRIEF = 500;
 export const MAX_CASE_AUTHOR = 60;
 
-export type EncodeResult = { ok: true; payload: string } | { ok: false; failure: CaseFailure };
+export type EncodeResult = { ok: true; payload: string; json: string } | { ok: false; failure: CaseFailure };
 
 export type DecodeResult = { ok: true; data: CaseData } | { ok: false; failure: CaseFailure };
 
@@ -125,11 +135,14 @@ interface Payload {
  * ---------------------------------------------------------------------------------- */
 
 /**
- * Turns a lab into the string that travels in `#c=` (S43, S59).
+ * Turns a lab into the string that travels in `#c=` (S43, S59) and into the document the `.json`
+ * download carries (S50).
  *
  * The payload is validated with the same reader that handles an import before it is written,
  * so the export can never emit something the import would refuse. The same `CaseData` always
- * produces the same string: same field order, no timestamps, nothing of the UI.
+ * produces the same two strings: same field order, no timestamps, nothing of the UI. The link
+ * carries the compact form because every byte costs a URL character; the file is indented
+ * because someone may open it, read it or fix a typo in it.
  */
 export function encodeCase(value: CaseData): EncodeResult {
   const built = toPayload(value);
@@ -138,11 +151,14 @@ export function encodeCase(value: CaseData): EncodeResult {
   const checked = readCase(built.value);
   if (!checked.ok) return checked;
 
-  const bytes = new TextEncoder().encode(JSON.stringify(built.value));
-  const payload = toBase64Url(bytes);
+  const compact = new TextEncoder().encode(JSON.stringify(built.value));
+  const json = JSON.stringify(built.value, null, 2);
+  const payload = toBase64Url(compact);
+
   if (payload.length > MAX_CASE_TEXT) return tooLarge(payload.length, MAX_CASE_TEXT);
-  if (bytes.length > MAX_CASE_BYTES) return tooLarge(bytes.length, MAX_CASE_BYTES);
-  return { ok: true, payload };
+  if (compact.length > MAX_CASE_BYTES) return tooLarge(compact.length, MAX_CASE_BYTES);
+
+  return { ok: true, payload, json };
 }
 
 function toPayload(value: CaseData): { ok: true; value: Payload } | { ok: false; failure: CaseFailure } {
@@ -230,6 +246,22 @@ export function decodeCase(text: string): DecodeResult {
 
   // Measured before decoding: a 10 MB fragment pasted by a third party is not fed to `atob` (S47).
   if (code.length > MAX_CASE_TEXT) return tooLarge(code.length, MAX_CASE_TEXT);
+
+  // A downloaded `.json` is a document, not a code: it goes straight to the reader (S50, R6).
+  if (code.startsWith('{')) {
+    const bytes = new TextEncoder().encode(code).length;
+    if (bytes > MAX_CASE_DOCUMENT_TEXT) return tooLarge(bytes, MAX_CASE_DOCUMENT_TEXT);
+
+    let document: unknown;
+    try {
+      document = JSON.parse(code);
+    } catch {
+      return failure('formato-invalido');
+    }
+    const read = readCase(document);
+    return read.ok ? { ok: true, data: read.value } : read;
+  }
+
   if (!BASE64URL.test(code)) return failure('formato-invalido');
 
   const bytes = fromBase64Url(code);
@@ -317,6 +349,15 @@ function readCase(value: unknown): Read<CaseData> {
 
 function internetNode(): Device {
   return createLab().devices[0];
+}
+
+/**
+ * Reads the `caso` block of a payload. Exported so the stored case uses exactly these rules and
+ * cannot drift from what an import accepts (S60, D32).
+ */
+export function readCaseMeta(value: unknown): CaseMeta | null {
+  const result = readMeta(value);
+  return result.ok ? result.value : null;
 }
 
 function readMeta(value: unknown): Read<CaseMeta | null> {

@@ -50,13 +50,13 @@ La cadena cruda se mide **antes** de llamar a `atob`: un `#c=` de 10 MB pegado p
 
 **S49 — Se exporta desde cualquier estado, incluido el ejemplo precargado.** No hay estado del que no se pueda sacar un caso.
 
-**S50 — Dos salidas con la misma información.** Copiar el enlace completo (`location.origin + location.pathname + '#c=' + payload`, nunca una base hardcodeada) y descargar `netlab-<slug>-<AAAA-MM-DD>.json`. El slug sale de `caso.titulo` cuando existe y si no de `laboratorio`, normalizado: NFD, sin diacríticos, minúsculas, `[a-z0-9-]`, máximo 40, colapsando guiones. La descarga es `Blob` + `URL.createObjectURL` + `<a download>` + `revokeObjectURL`, sin dependencias.
+**S50 — Dos salidas con la misma información.** Copiar el enlace completo (`location.origin + location.pathname + '#c=' + payload`, nunca una base hardcodeada) y descargar `netlab-<slug>-<AAAA-MM-DD>.json`. El slug sale de `caso.titulo` cuando existe y si no de `laboratorio`, normalizado: NFD, sin diacríticos, minúsculas, `[a-z0-9-]`, máximo 40, colapsando guiones. La descarga es `Blob` + `URL.createObjectURL` + `<a download>` + `revokeObjectURL`, sin dependencias. **El fichero contiene el documento JSON del payload, indentado**, no el código base64: un archivo que se llama `.json` tiene que poder abrirse, leerse y corregirse a mano, y volver a importarse. El enlace lleva la forma compacta, porque ahí cada byte cuesta un carácter de URL.
 
 **S51 — El diálogo de exportación pide el caso, opcionalmente.** Título, consigna y autor. Los tres vacíos → se exporta sin bloque `caso`. Un alumno puede exportar su red sin título.
 
 **S52 — Portapapeles con fallback honesto.** `navigator.clipboard.writeText` primero. Si no hay contexto seguro o no hay permiso: `textarea` + `select()` + `document.execCommand('copy')`. Si eso también falla, el texto queda seleccionado y el aviso dice explícitamente que hay que pulsar Ctrl+C. Nunca un aviso de éxito sin haber copiado: `select()` solo no copia nada.
 
-**S53 — Un solo campo acepta las tres formas.** URL completa (`…/#c=…`), fragmento (`#c=…`) y código pelado (`v1…`). Se recorta el espacio en blanco que agregan los chats al pegar.
+**S53 — Un solo campo acepta cuatro formas.** URL completa (`…/#c=…`), fragmento (`#c=…`), código pelado (`v1…`) y el documento JSON del `.json` exportado, que se lee como objeto y pasa por las mismas reglas. Se recorta el espacio en blanco que agregan los chats al pegar.
 
 **S54 — También acepta un fichero.** Arrastrado o elegido, `.json` exportado o `.txt` con el enlace dentro: es la misma cadena y el mismo analizador. Tope de tamaño antes de leer (`file.size > 65536` → `payload-demasiado-grande`), porque `File.text()` es asíncrono y no hay razón para leer 40 MB.
 
@@ -155,8 +155,8 @@ Note que el índice `0` es el primer dispositivo de `dispositivos` (el router) y
 | T2 | Codec y construcción del laboratorio: sobre versionado, base64url UTF-8, límites medidos antes de `atob`, los seis códigos, ids y `seq` deterministas e Internet implícito | S43–S48, S57, S59, S61 | worker | `6370bf2`, `e56511c` |
 | T3 | *(absorbida por T2)* Separarla exigiría validar cables sin el laboratorio armado, que es exactamente la lógica de puertos que no se quiere tener dos veces | S45, S46, S61 | — | — |
 | T4 | Tope de 20 dispositivos en la paleta, con su mensaje y sus tests | S47, D29 | inline | `10830e2` |
-| T5 | Panel del caso, persistido en `net-lab:caso:v1` | S45, D32 | worker | — |
-| T6 | Diálogo de exportación: enlace, `.json`, portapapeles con fallback | S49, S50, S51, S52 | worker | — |
+| T5 | Panel del caso, persistido en `net-lab:caso:v1` | S45, D32 | inline | `8441106` |
+| T6 | Diálogo de exportación: enlace, `.json`, portapapeles con fallback | S49, S50, S51, S52 | worker | `b0a0160` |
 | T7 | Diálogo de importación: campo, fichero, confirmación, errores | S53, S54, S55, S56 | worker | — |
 | T8 | Arranque con `#c=` y limpieza del fragmento | S58, D31 | worker | — |
 | T9 | i18n de todo lo nuevo, accesibilidad y lista de comprobación manual | S57, S62, S63, S64 | inline | — |
@@ -417,10 +417,37 @@ Límite conocido: que la paleta desactive los botones no tiene test de DOM (ser�
 
 Verificación: `tsc` limpio y **267 tests en verde** en 19 archivos.
 
-**L7 — La revisión nativa encontró una asimetría real, y ahora está fijada.**
+**L7 — T5 entregada (`8441106`).** El caso tiene su propia clave, `net-lab:caso:v1`, con su propio sobre y su propia versión: vaciar el laboratorio no puede llevarse el enunciado, igual que no resetea el idioma. `parseCase` no valida por su cuenta: reutiliza `readCaseMeta`, el mismo lector que usa un payload, así que un caso guardado y uno importado no pueden discrepar sobre qué es un caso.
+
+La persistencia vive en un hook, `useStoredCase`, y no en `labReducer`, a propósito: el laboratorio es lo que el alumno edita, el caso es lo que mandó el docente, y un F5 tiene que conservar los dos. El panel muestra los tres campos como texto —React escapa, así que una consigna con `<b>` se ve tal cual, que es lo que S45 pide— y dice «caso sin título» cuando no lo tiene.
+
+Estado honesto: hoy **nada** asigna el caso, así que el panel está cableado y oculto. Lo encienden el diálogo de exportación (T6) y la importación (T7). Quince tests nuevos: ida y vuelta del almacenamiento con sus fixtures rechazados, el hook sobreviviendo a un montaje nuevo y borrando sin tocar la clave del laboratorio, y el panel mostrando una consigna con pinta de marcado como texto plano.
+
+Verificación: `tsc` limpio y **282 tests en verde** en 21 archivos. `assess` lo clasificó como riesgo medio sin revisión nativa ni verificador independiente: autoverificación.
+
+**L8 — T6 entregada (`b0a0160`).** El diálogo de compartir vive en la barra superior. El enlace se arma con `location.origin + location.pathname`, nunca con una base fija, así que sobrevive a que el repositorio cambie de dominio; el fichero se llama `netlab-<slug>-<fecha>.json`, con el slug desde el título, sin acentos, cortado a cuarenta y con `laboratorio` de reserva. Los tres campos son opcionales: vacíos, el payload no lleva bloque `caso` y viaja solo el laboratorio. Lo que se comparte pasa a ser el caso del laboratorio en pantalla, que es lo que finalmente enciende el panel de T5.
+
+Copiar es honesto: `navigator.clipboard.writeText`, después un `textarea` con `execCommand('copy')` y, si ninguno de los dos funciona, el enlace ya está en un campo de solo lectura, seleccionado, con un aviso de que hay que pulsar Ctrl+C. La función no puede devolver «copiado» cuando solo seleccionó texto, que es la confusión que traía el borrador original de R4.
+
+**Una corrección sobre el trabajo del worker.** El `.json` descargado contenía el código base64: un archivo con extensión `.json` que no es JSON, ilegible para quien lo abra. Ahora el fichero lleva el documento indentado —se puede leer, corregir una errata y volver a importar— y el enlace sigue llevando la forma compacta, porque ahí cada byte cuesta un carácter de URL. Como consecuencia, `decodeCase` acepta el documento como cuarta forma, con el mismo tope de 16 KB, y S53 pasó de tres a cuatro formas.
+
+Dos decisiones menores del worker que dejo como están: el caso se guarda al pedir compartir, antes de que el portapapeles conteste (si falla, la verdad es que el enlace está en pantalla), y el diálogo no se cierra solo tras copiar, para poder llevarse las dos salidas de una visita.
+
+Verificación: `tsc` limpio y **307 tests en verde** en 23 archivos. `assess`: riesgo medio, sin revisión nativa ni verificador independiente.
+
+**L9 — Dos correcciones de revisión sobre T6: R3-002/R4-001 y R3-001.** El documento indentado del `.json` es un renderizado de un payload que ya está acotado por `MAX_CASE_BYTES`, pero `encodeCase` vetaba la exportación entera cuando el renderizado pasaba ese tope. Como el JSON con sangría siempre es más grande que el compacto, un laboratorio legal se quedaba sin enlace y sin fichero a la vez, contra S49 y S50. El veto del fichero desapareció: los dos topes del enlace —24 000 caracteres y 16 384 bytes del payload— siguen exactamente donde estaban, porque miden lo que viaja en la URL y no lo que se imprime.
+
+El tope del documento pasó a `MAX_CASE_DOCUMENT_TEXT = 2 * MAX_CASE_TEXT`. La razón es que mide un renderizado y no el payload, así que su techo es proporcional: el laboratorio más grande que el esquema permite —veinte dispositivos con todos los nombres a cuarenta caracteres, setenta y ocho cables, el caso a sus límites— ocupa unos 8 KB compactos y unos 17 KB de documento, y ahora se importa sin discusión. Consecuencia honesta del número elegido: para texto ASCII el tope de caracteres del enlace (24 000) dispara antes que el del documento (48 000), así que este último solo se alcanza con caracteres de tres bytes; el test lo hace con 20 000 caracteres anchos y comprueba el `{n, max}` exacto en vez de solo el código.
+
+En el diálogo de exportación, el sello «Enlace copiado.» sobrevivía a editar el título, la consigna o el autor, y también a cerrar y reabrir: afirmaba una copia de un enlace que ya no estaba en el portapapeles, contra S52. Ahora una sola función —`edit`— actualiza el campo y limpia el estado a la vez, las tres entradas pasan por ella, y el efecto de apertura limpia el sello, así que reabrir nunca muestra uno viejo.
+
+Verificación: `pnpm typecheck` limpio y **312 tests en verde** en 23 archivos, con cinco tests nuevos (tres del documento, dos del sello). El test que fijaba el tope viejo del documento —`src/domain/__tests__/case.paths.test.ts`, el caso «too big to be one»— se reapuntó al tope nuevo con caracteres de tres bytes, para que siga midiendo el tope del documento y no el del enlace. La revisión cerró después con validación dirigida.
+
+**L10 — La revisión nativa del tramo de dominio encontró una asimetría real, y quedó fijada.** (Entrada del tramo 1b, conservada al mergear `feat/casos-domain`; se renumera para no chocar con la L7 de T5.)
 
 El revisor de resiliencia del tramo de dominio levantó R4-001 como crítico: `parseLab` confía en `validateLab`, que no aplica los topes de S47, mientras `encodeCase` sí los aplica, así que un laboratorio guardado con más de 20 dispositivos se vería pero no se podría exportar, contra S49. La autoridad lo admitió con `unknown_causality` (`unverified_location`: el renglón citado no era donde viviría el defecto) y la revisión escaló en lugar de aprobar. Comprobado en el código: los otros dos estados del hallazgo no son alcanzables — `renameDevice` ya rechaza el nombre vacío y el de 41 caracteres desde antes de esta feature, y la paleta ya rechaza el dispositivo 21 (D29) —, así que lo único alcanzable es un laboratorio guardado por un build sin tope.
 
 La asimetría se sostiene y es la decisión correcta, porque las dos alternativas son peores: forzar el tope al cargar tiraría el trabajo del alumno, y sacarlo del codificador produciría un caso que la importación rechaza. `src/ui/__tests__/storage.test.ts` fija los tres pasos: carga, el codificador lo rechaza con `demasiados-dispositivos` y `{ n: 21 }`, y vuelve a exportarse apenas sobra un dispositivo.
 
 Verificación: `tsc` limpio y **268 tests en verde** en 19 archivos.
+
