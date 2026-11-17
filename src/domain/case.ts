@@ -319,6 +319,15 @@ function internetNode(): Device {
   return createLab().devices[0];
 }
 
+/**
+ * Reads the `caso` block of a payload. Exported so the stored case uses exactly these rules and
+ * cannot drift from what an import accepts (S60, D32).
+ */
+export function readCaseMeta(value: unknown): CaseMeta | null {
+  const result = readMeta(value);
+  return result.ok ? result.value : null;
+}
+
 function readMeta(value: unknown): Read<CaseMeta | null> {
   if (value === undefined || value === null) return { ok: true, value: null };
   if (!isRecord(value)) return invalid('caso');

@@ -14,6 +14,9 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   // Shell
   'app.title': 'Net-Lab — laboratorio de redes',
   'header.loadExample': 'Cargar ejemplo',
+  'case.label': 'Enunciado del caso',
+  'case.untitled': 'Caso sin título',
+  'case.by': 'Por {author}',
   'header.clearLab': 'Vaciar laboratorio',
   'banner.dismiss': 'Descartar',
   'confirm.loadExample': '¿Seguro que quieres cargar el ejemplo? Se quitarán todos los dispositivos y sus cables.',

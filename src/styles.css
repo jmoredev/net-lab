@@ -138,6 +138,33 @@ body {
   color: var(--state-offline);
 }
 
+/* The brief of an imported case (D32): full width, above the three zones. */
+.case {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+}
+
+.case__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.case__brief {
+  margin: 0;
+  max-width: 90ch;
+}
+
+.case__author {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
 .zone__title {
   margin: 0 0 12px;
   font-size: 0.75rem;

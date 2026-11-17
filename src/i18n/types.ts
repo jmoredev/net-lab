@@ -20,6 +20,9 @@ export type UiKey =
   // Shell: title, header buttons, banner and the two confirmation questions (D23).
   | 'app.title'
   | 'header.loadExample'
+  | 'case.label'
+  | 'case.untitled'
+  | 'case.by'
   | 'header.clearLab'
   | 'banner.dismiss'
   | 'confirm.loadExample'

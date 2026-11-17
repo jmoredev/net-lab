@@ -6,12 +6,14 @@ import { findHops } from './domain/path';
 import { LanguageProvider, useI18n } from './i18n/LanguageProvider';
 import { resolveStoredMessage } from './i18n';
 import type { Travel } from './ui/animation';
+import { CasePanel } from './ui/components/CasePanel';
 import { DevicePalette } from './ui/components/DevicePalette';
 import { DevicePanel, type SendProblem } from './ui/components/DevicePanel';
 import { LabCanvas } from './ui/components/LabCanvas';
 import { LanguageSwitch } from './ui/components/LanguageSwitch';
 import { initialLabState, labReducer, labStateWith } from './ui/labReducer';
 import { clearLab, loadLab, saveLab } from './ui/storage';
+import { useStoredCase } from './ui/useStoredCase';
 
 /** The stored lab of S31 when it is still valid, the empty start of S24 otherwise. */
 function initialState() {
@@ -37,6 +39,8 @@ function NetLab() {
   const { t, lang } = useI18n();
   const [state, dispatch] = useReducer(labReducer, null, initialState);
   const [travel, setTravel] = useState<Travel | null>(null);
+  /** The brief the case carries, if any: it has its own key and survives a reload (D32). */
+  const [caseMeta] = useStoredCase();
   /** Device being dragged on the canvas: the palette turns into the trash zone (S11). */
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const statuses = useMemo(() => computeStatus(state.lab), [state.lab]);
@@ -124,6 +128,8 @@ function NetLab() {
           </button>
         </div>
       ) : null}
+
+      {caseMeta === null ? null : <CasePanel meta={caseMeta} />}
 
       <div className="app__body">
         <DevicePalette state={state} dispatch={dispatch} busy={busy} draggingId={draggingId} />

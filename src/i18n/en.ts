@@ -10,6 +10,9 @@ export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   // Shell
   'app.title': 'Net-Lab — network lab',
   'header.loadExample': 'Load example',
+  'case.label': 'Case brief',
+  'case.untitled': 'Untitled case',
+  'case.by': 'By {author}',
   'header.clearLab': 'Clear lab',
   'banner.dismiss': 'Dismiss',
   'confirm.loadExample': 'Load the example? Every device and cable in the lab will be removed.',
