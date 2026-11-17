@@ -420,10 +420,9 @@ describe('ImportDialog: a file is the same string and the same analyser (S54)', 
     fireEvent.dragOver(dialog);
 
     expect(dialog.className).toContain('dialog__drop--active');
-    // Named by the hint, so the state is announced and not only painted.
-    expect(
-      screen.getByRole('dialog', { name: /También puedes arrastrarlo aquí/ }),
-    ).toBe(dialog);
+    // The name stays the title: a dialog is never renamed by a transient visual state, or a
+    // screen reader would read the whole hint as its name while the user is dragging a file.
+    expect(screen.getByRole('dialog', { name: 'Abrir un caso' })).toBe(dialog);
   });
 });
 

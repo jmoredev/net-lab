@@ -77,7 +77,7 @@ La cadena cruda se mide **antes** de llamar a `atob`: un `#c=` de 10 MB pegado p
 
 `{campo}` es una ruta estable y documentada **en el vocabulario del payload**, que es lo que un docente puede editar: sin el nodo Internet —que no viaja— y con los nombres cortos del esquema. Un problema de dirección manual en el segundo dispositivo es `dispositivos[1].ip.ip`, no `lab.devices[2].manualIp`; un rango invertido es `router.dhcp.desde`, no `lab.router.dhcpStart`; un problema con el conjunto es `dispositivos`. `{detalle}` **reutiliza el mensaje ya traducido del dominio** —`port-occupied`, `port-missing`, `self-connection`, `wan-only-internet`… (`src/domain/types.ts:73-102`)— en lugar de inventar códigos nuevos para lo que el dominio ya sabe decir. Esto también hace que el mensaje de un cable inválido sea idéntico al que el alumno vería al intentar ese cable en la app.
 
-**S58 — Arrancar con `#c=` importa y limpia el fragmento.** Si la URL trae `#c=` al cargar, se importa antes de leer el almacenamiento. Tras importar se limpia el fragmento con `history.replaceState`, en el éxito y en el error: si no, un F5 vuelve a importar y borra el trabajo del alumno, que es el bug más caro de esta funcionalidad y no se ve en la demo. Un caso inválido no sobrescribe nada y deja el laboratorio guardado como estaba. Con un laboratorio propio guardado, el arranque pide confirmación antes de reemplazarlo (D31).
+**S58 — Arrancar con `#c=` importa y limpia el fragmento.** Si la URL trae `#c=` al cargar se restaura primero el laboratorio guardado —que es contra lo que se decide si hay que confirmar— y después se importa el caso. El fragmento se limpia con `history.replaceState` **antes de decidir nada**, en el éxito y en el error: si no, un F5 vuelve a importar y borra el trabajo del alumno, que es el bug más caro de esta funcionalidad y no se ve en la demo. Un caso inválido no sobrescribe nada, deja el laboratorio guardado como estaba y deja una frase con su código. Con un laboratorio propio guardado, el arranque pide confirmación antes de reemplazarlo (D31).
 
 **S59 — La exportación es determinista.** El mismo laboratorio produce siempre la misma cadena, byte a byte. Permite comparar dos enlaces, diffear y testear sin ruido.
 
@@ -158,8 +158,8 @@ Note que el índice `0` es el primer dispositivo de `dispositivos` (el router) y
 | T5 | Panel del caso, persistido en `net-lab:caso:v1` | S45, D32 | inline | `8441106` |
 | T6 | Diálogo de exportación: enlace, `.json`, portapapeles con fallback | S49, S50, S51, S52 | worker | `b0a0160` |
 | T7 | Diálogo de importación: campo, fichero, confirmación, errores | S53, S54, S55, S56, S57 | worker | `c41446c` |
-| T8 | Arranque con `#c=` y limpieza del fragmento | S58, D31 | worker | — |
-| T9 | i18n de todo lo nuevo, accesibilidad y lista de comprobación manual | S57, S62, S63, S64 | inline | — |
+| T8 | Arranque con `#c=` y limpieza del fragmento | S58, D31 | inline | `ee32a03` |
+| T9 | i18n de todo lo nuevo, accesibilidad y lista de comprobación manual | S57, S62, S63, S64 | inline | pendiente de la comprobación manual |
 
 **Slices de commit previstos** (unidades revisables, ~400 líneas autoradas): 1) T1 + T2, el corazón del formato; 2) T3 + T4, dominio y límite; 3) T6 + T7 + T8 + T5, la interfaz; 4) T9, textos y accesibilidad. T1 y T3 tocan el formato de datos guardados: van en su propio commit para que la revisión nativa pueda tomarlos solos.
 
@@ -444,3 +444,25 @@ Reemplazar pide confirmación solo cuando hay trabajo que perder. La importació
 Sinceridad sobre el método: la corrección de `isExampleLab` no se hizo con el test primero; el test que la fija se escribió después y pasó a la primera. Lo que sí está claro es que el test la fija: con la comparación vieja, el primer caso del archivo `labComparisonExample.test.ts` falla.
 
 Verificación: `tsc` limpio y **353 tests en verde** en 26 archivos. Los 45 nuevos cubren las cuatro formas, los seis fallos renderizados por el catálogo, la tabla de verdad de la confirmación, el tope del fichero, el `.json` por el input de fichero y la comparación con su ida y vuelta. `assess`: riesgo medio, sin revisión nativa ni verificador independiente.
+
+**L10 — T8 entregada (`ee32a03`).** Abrir `…#c=…` importa el caso antes que nada y olvida el enlace en el mismo acto, en el éxito y en el error: un F5 que vuelva a importar borra lo que el alumno hizo después, que es el bug caro de esta funcionalidad y el que no se ve en una demo. La limpieza va por `history.replaceState`, así que la URL pierde el fragmento sin ganar una entrada de historial: volver atrás sigue saliendo de la página.
+
+Con trabajo propio en pantalla se pregunta primero, igual que en el diálogo de abrir (D31); el ejemplo o el arranque vacío no valen una pregunta. Un enlace ilegible deja una frase con su código y no toca el laboratorio guardado.
+
+**Un ajuste del documento que este trabajo destapó.** S58 decía que el caso se importa «antes de leer el almacenamiento», pero para decidir si hay que confirmar hace falta justamente el laboratorio guardado. El orden real —y el correcto— es restaurar y después importar; S58 ya lo dice así.
+
+De paso, `caseFailureText` quedó en un solo lugar (`src/ui/caseMessage.ts`) y el diálogo de importar lo usa, así que la composición de `{detalle}` existe una vez y no dos.
+
+Verificación: `tsc` limpio y **362 tests en verde** en 28 archivos. Nueve pruebas nuevas: el lector del fragmento sin enlace, con enlace bueno, con enlace roto y con otra versión; la reescritura de la URL; y la app entera en jsdom —importada, limpiada y guardada—, más el enlace roto y los dos lados de la confirmación.
+
+**L11 — T9: auditoría hecha, comprobación manual pendiente.**
+
+*Textos.* Ningún literal en el JSX de `ExportDialog`, `ImportDialog` ni `CasePanel`: todo pasa por el catálogo, que además obliga por compilación a tener cada clave en los dos idiomas. Las cadenas de los casos son datos y se muestran como texto, nunca traducidas.
+
+*Accesibilidad.* Los dos diálogos son `<dialog>` nativos con `showModal()` cuando existe y el atributo `open` cuando no, `onCancel` para que Escape cierre por la misma puerta que el botón, y el foco en el primer campo al abrir. Se corrigió una concesión que había dejado el worker: el diálogo de abrir se renombraba con la frase del `hint` mientras un fichero lo sobrevolaba, y el nombre accesible de un diálogo es su título, no un párrafo. El test de eso se actualizó para fijar el comportamiento correcto, no para tapar el cambio.
+
+*Build.* `pnpm build` en verde: **96,58 KB gzip** de JavaScript y 2,30 KB de CSS, contra los 83,5 KB de la v1. El crecimiento es el precio de los dos diccionarios completos más la funcionalidad; no hay dependencias nuevas.
+
+*Criterio 8 sin test propio.* Que los once motivos de `diagnostics.ts` sigan siendo alcanzables fabricando un caso a mano no necesita once pruebas nuevas: el codec conserva todos los campos —eso lo fija la ida y vuelta con `computeStatus` idéntico— y cada motivo ya es alcanzable en el dominio, que es lo que prueba `diagnostics.test.ts`. Es un argumento, no una prueba, y queda dicho como tal.
+
+*Lo que falta y no puedo hacer yo.* La lista manual del spec: portapapeles real en Chrome con permiso concedido y denegado, el enlace pegado en Classroom y abierto desde otro equipo, el `.json` descargado y reimportado, y un F5 después de importar. jsdom no cree el portapapeles, ni la descarga, ni el fragmento de verdad.

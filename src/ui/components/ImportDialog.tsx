@@ -141,12 +141,13 @@ export function ImportDialog({ open, lab, onClose, onImport }: ImportDialogProps
       ? (file?.name ?? '')
       : t('import.done', { title: imported.title ?? t('case.untitled') });
 
+  // The accessible name of a dialog is its title, never a paragraph: a screen reader would read
+  // the whole hint as the name. The drop state is decoration and does not rename anything.
   return (
     <dialog
       ref={dialogRef}
       className={dragging ? 'dialog dialog__drop dialog__drop--active' : 'dialog dialog__drop'}
-      aria-labelledby={dragging ? undefined : 'import-dialog-title'}
-      aria-label={dragging ? t('import.hint') : undefined}
+      aria-labelledby="import-dialog-title"
       onCancel={(event) => {
         // Escape closes through the same door as the button, so the parent owns the state.
         event.preventDefault();
