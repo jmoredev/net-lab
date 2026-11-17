@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { addDevice, connectCable, createLab, setAddressing } from '../lab';
+import { createExampleLab } from '../example';
+import {
+  addDevice,
+  connectCable,
+  createLab,
+  renameDevice,
+  setAddressing,
+  setDhcpRange,
+  setRouterLanIp,
+} from '../lab';
 import { validateLab } from '../labSchema';
 import type { Lab, Result } from '../types';
 
@@ -202,6 +211,42 @@ describe('labSchema: addressing the old validator let through (D30)', () => {
     const lab = clone(sampleLab());
     if (lab.router) lab.router.wanIp = '203.0.113';
     expect(issueOf(lab)).toMatchObject({ path: 'lab.router.wanIp', code: 'invalid-ipv4' });
+  });
+});
+
+describe('labSchema: nothing the app builds can fail the validator (S60)', () => {
+  it('refuses a router address that lands inside the DHCP range', () => {
+    const lab = unwrap(addDevice(createLab(), 'router', { x: 0, y: 0 }));
+    // The default range is 2..100, so .50 would be handed out to a client.
+    const set = setRouterLanIp(lab, '192.168.1.50');
+    expect(set.ok).toBe(false);
+    if (!set.ok) {
+      expect(set.code).toBe('router-ip-in-dhcp-range');
+      expect(set.params).toEqual({ start: 2, end: 100 });
+    }
+    expect(validateLab(lab).ok).toBe(true);
+  });
+
+  it('accepts a router address once the range has moved away from it', () => {
+    let lab = unwrap(addDevice(createLab(), 'router', { x: 0, y: 0 }));
+    lab = unwrap(setDhcpRange(lab, 100, 150));
+    lab = unwrap(setRouterLanIp(lab, '192.168.1.200'));
+
+    expect(lab.router?.lanIp).toBe('192.168.1.200');
+    expect(validateLab(lab).ok).toBe(true);
+  });
+
+  it('numbers devices without colliding with a case-only rename', () => {
+    let lab = unwrap(addDevice(createLab(), 'laptop', { x: 0, y: 0 }));
+    lab = unwrap(renameDevice(lab, lab.devices[1].id, 'LAPTOP-1'));
+    lab = unwrap(addDevice(lab, 'laptop', { x: 10, y: 0 }));
+
+    expect(lab.devices[2].name).toBe('Laptop-2');
+    expect(validateLab(lab).ok).toBe(true);
+  });
+
+  it('accepts the lab of the shipped example', () => {
+    expect(validateLab(createExampleLab()).ok).toBe(true);
   });
 });
 

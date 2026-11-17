@@ -123,6 +123,7 @@ const failures: FailureCase[] = [
     run: () => {
       const s = scene();
       s.router();
+      s.range(200, 254);
       s.lanIp('192.168.1.100');
       return setDhcpRange(s.lab, 2, 150);
     },
@@ -236,6 +237,7 @@ const codes: Record<DomainMessageCode, true> = {
   'port-occupied': true,
   'router-already-exists': true,
   'router-ip-broadcast': true,
+  'router-ip-in-dhcp-range': true,
   'router-no-wan': true,
   'router-no-wan-address': true,
   'router-wifi-off': true,
@@ -250,7 +252,7 @@ describe('domain messages: the code catalogue', () => {
   it('lists every code once and keeps them kebab-case', () => {
     const listed = Object.keys(codes);
     // A key written twice in the literal collapses silently, so the count is explicit.
-    expect(listed).toHaveLength(39);
+    expect(listed).toHaveLength(40);
     expect(listed.every((code) => /^[a-z0-9]+(-[a-z0-9]+)*$/.test(code))).toBe(true);
   });
 });

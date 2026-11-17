@@ -93,6 +93,7 @@ export type ValidationMessageCode =
   | 'no-router-yet'
   | 'invalid-ipv4'
   | 'router-ip-broadcast'
+  | 'router-ip-in-dhcp-range'
   | 'dhcp-range-outside-subnet'
   | 'dhcp-range-includes-router'
   | 'dhcp-range-inverted'

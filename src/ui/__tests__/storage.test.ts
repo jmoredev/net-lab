@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createExampleLab } from '../../domain/example';
 import { addDevice, connectCable, createLab, setAddressing, type Lab } from '../../domain/lab';
 import type { Result } from '../../domain/types';
 import { STORAGE_KEY, clearLab, loadLab, parseLab, saveLab, serialize } from '../storage';
@@ -161,6 +162,11 @@ describe('storage: the shared validator rejects what the old one let through (D3
     const lab = sampleLab();
     const devices = [...lab.devices, { ...lab.devices[1], id: 'd90', name: 'Router 2' }];
     expect(parseJson({ version: 1, lab: { ...lab, devices } })).toBeNull();
+  });
+
+  it('round-trips the lab of the shipped example', () => {
+    const lab = createExampleLab();
+    expect(parseLab(serialize(lab))).toEqual(lab);
   });
 });
 

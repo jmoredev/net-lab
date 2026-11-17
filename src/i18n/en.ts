@@ -125,6 +125,7 @@ export const EN: Record<UiKey | DomainMessageCode, string> = {
   // Domain validation failures
   'internet-not-addable': 'The Internet node cannot be added.',
   'router-already-exists': 'The lab already has a router.',
+  'router-ip-in-dhcp-range': 'The router address cannot be inside the DHCP range ({start}-{end}).',
   'name-empty': 'The name cannot be empty.',
   'device-missing': 'That device no longer exists.',
   'name-taken': 'A device called {name} already exists.',

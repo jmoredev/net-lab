@@ -252,6 +252,17 @@ export function setRouterLanIp(lab: Lab, lanIp: string): Result<Lab> {
   if (!isHostIp(lanIp)) {
     return fail('router-ip-broadcast', 'La dirección del router no puede terminar en .0 ni en .255.', { ip: lanIp });
   }
+  // The same invariant `setDhcpRange` enforces from the other side: a lab where the router
+  // sits inside the DHCP range would hand its own address to a client. Without this guard the
+  // domain could build a lab the shared validator rejects, and storage would drop it on reload.
+  const host = hostOctet(lanIp);
+  if (host !== null && lab.router.dhcpStart <= host && host <= lab.router.dhcpEnd) {
+    return fail(
+      'router-ip-in-dhcp-range',
+      `La dirección del router no puede estar dentro del rango DHCP (${lab.router.dhcpStart}-${lab.router.dhcpEnd}).`,
+      { start: lab.router.dhcpStart, end: lab.router.dhcpEnd },
+    );
+  }
   return ok({ ...lab, router: { ...lab.router, lanIp } });
 }
 
@@ -321,7 +332,9 @@ function defaultName(lab: Lab, kind: DeviceKind): string {
   const label = CAPABILITIES[kind].label;
   if (kind === 'router') return label;
   let n = 1;
-  while (lab.devices.some((device) => device.name === `${label}-${n}`)) n += 1;
+  // Lowercased, like `renameDevice` compares: otherwise a device renamed to `LAPTOP-1` would
+  // not be seen here and the next laptop would be born as a duplicate `Laptop-1`.
+  while (lab.devices.some((device) => device.name.toLowerCase() === `${label}-${n}`.toLowerCase())) n += 1;
   return `${label}-${n}`;
 }
 

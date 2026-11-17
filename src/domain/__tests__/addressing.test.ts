@@ -119,6 +119,9 @@ describe('addressing: DHCP range', () => {
   it('rejects a range that contains the router address', () => {
     const s = scene();
     s.router();
+    // The range moves away first: a router address inside the current range is refused
+    // by `setRouterLanIp` itself, which is the other side of this same invariant.
+    s.range(200, 254);
     s.lanIp('192.168.1.50');
     const result = setDhcpRange(s.lab, 40, 60);
     expect(result.ok).toBe(false);
