@@ -154,7 +154,7 @@ Note que el índice `0` es el primer dispositivo de `dispositivos` (el router) y
 | T1 | Validador estricto de `Lab` en el dominio; `storage.ts` pasa a llamador | S60, D30 | inline | `49d8e47`, `795d454` |
 | T2 | Codec y construcción del laboratorio: sobre versionado, base64url UTF-8, límites medidos antes de `atob`, los seis códigos, ids y `seq` deterministas e Internet implícito | S43–S48, S57, S59, S61 | worker | `6370bf2`, `e56511c` |
 | T3 | *(absorbida por T2)* Separarla exigiría validar cables sin el laboratorio armado, que es exactamente la lógica de puertos que no se quiere tener dos veces | S45, S46, S61 | — | — |
-| T4 | Tope de 20 dispositivos en la paleta, con su mensaje y sus tests | S47, D29 | worker | — |
+| T4 | Tope de 20 dispositivos en la paleta, con su mensaje y sus tests | S47, D29 | inline | `10830e2` |
 | T5 | Panel del caso, persistido en `net-lab:caso:v1` | S45, D32 | worker | — |
 | T6 | Diálogo de exportación: enlace, `.json`, portapapeles con fallback | S49, S50, S51, S52 | worker | — |
 | T7 | Diálogo de importación: campo, fichero, confirmación, errores | S53, S54, S55, S56 | worker | — |
@@ -408,3 +408,11 @@ La ida y vuelta es determinista: el nodo Internet se reconstruye desde el domini
 **El verificador pidió dos cosas más, y tenía razón.** El `{campo}` mezclaba dos vocabularios —`dispositivos[3].n` para lo que detecta el codec, `lab.devices[4].manualIp` para lo que detecta el validador, con el índice corrido un lugar porque el nodo Internet no viaja—; ahora se traduce al vocabulario del payload. Y un JSON que no es objeto (`null`, `[1,2]`, `5`) se reportaba como problema de versión; ahora es `formato-invalido`, porque no hay versión de la que hablar. Doce tests nuevos fijan las dos cosas.
 
 Verificación: `tsc` limpio y **262 tests en verde** en 18 archivos. El verificador independiente probó las ocho afirmaciones del encargo con sondas propias —incluida una matriz de diez filas de direccionamiento, un espía sobre `atob` que confirma cero llamadas al rechazar un código de 20 MB, y dieciséis entradas hostiles sin un solo `throw`— y las ocho se sostienen.
+
+**L6 — T4 entregada (`10830e2`).** El camino ya existía: `labReducer` guarda `message`, `messageCode` y `messageParams`, y `App.tsx:114` traduce por código. Lo que faltaba era que **todas** las ramas lo hicieran. `delete-device` era la única que solo guardaba el texto: con la interfaz en inglés, negarse a borrar el nodo Internet mostraba la frase en español. Y su rama de éxito dejaba el `messageCode` viejo colgado, así que un fallo seguido de un borrado bueno seguía mostrando el error viejo, porque el banner pinta el código cuando está. Las dos se cerraron pasando la rama por `failed()`.
+
+La mitad visible: la paleta desactiva sus botones al llegar a `MAX_DEVICES` y lo dice, como ya hacía con el router. El nodo Internet no cuenta, así que el número significa lo mismo que el del payload.
+
+Límite conocido: que la paleta desactive los botones no tiene test de DOM (serían veinte clics por test); lo que sí está probado es el código del fallo y su texto. La guardia de verdad es la del dominio.
+
+Verificación: `tsc` limpio y **267 tests en verde** en 19 archivos.
