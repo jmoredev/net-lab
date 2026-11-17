@@ -259,7 +259,10 @@ export function decodeCase(text: string): DecodeResult {
  * so the two directions can never disagree about what a valid payload is.
  */
 function readCase(value: unknown): Read<CaseData> {
-  const payload = isRecord(value) ? value : {};
+  // Not a case at all: there is no version to talk about, so this is a shape failure and not
+  // `version-no-soportada`, which is reserved for a payload that parsed but is not ours (S44).
+  if (!isRecord(value)) return failure('formato-invalido');
+  const payload = value;
 
   // `v` comes first (S44): nothing else is interpreted until the version is understood.
   const version = payload.v;
@@ -296,7 +299,7 @@ function readCase(value: unknown): Read<CaseData> {
   const links = cables.value;
 
   const routerDevice = devices.find((device) => device.kind === 'router');
-  if (draft.value !== null && routerDevice === undefined) return invalid('lab.router');
+  if (draft.value !== null && routerDevice === undefined) return invalid('router');
   const router: RouterSettings | null =
     draft.value === null || routerDevice === undefined ? null : { deviceId: routerDevice.id, ...draft.value };
 
@@ -396,20 +399,20 @@ interface RouterDraft {
 
 function readRouter(value: unknown): Read<RouterDraft | null> {
   if (value === undefined || value === null) return { ok: true, value: null };
-  if (!isRecord(value)) return invalid('lab.router');
+  if (!isRecord(value)) return invalid('router');
 
   const { lanIp, ssid } = value;
-  if (typeof lanIp !== 'string') return invalid('lab.router.lanIp');
-  if (typeof ssid !== 'string') return invalid('lab.router.ssid');
+  if (typeof lanIp !== 'string') return invalid('router.lanIp');
+  if (typeof ssid !== 'string') return invalid('router.ssid');
 
   const wanIp = value.wanIp;
-  if (wanIp !== undefined && wanIp !== null && typeof wanIp !== 'string') return invalid('lab.router.wanIp');
+  if (wanIp !== undefined && wanIp !== null && typeof wanIp !== 'string') return invalid('router.wanIp');
 
   const dhcp = value.dhcp;
-  if (!isRecord(dhcp)) return invalid('lab.router.dhcp');
+  if (!isRecord(dhcp)) return invalid('router.dhcp');
   const { desde, hasta } = dhcp;
-  if (typeof desde !== 'number' || !Number.isInteger(desde)) return invalid('lab.router.dhcp.desde');
-  if (typeof hasta !== 'number' || !Number.isInteger(hasta)) return invalid('lab.router.dhcp.hasta');
+  if (typeof desde !== 'number' || !Number.isInteger(desde)) return invalid('router.dhcp.desde');
+  if (typeof hasta !== 'number' || !Number.isInteger(hasta)) return invalid('router.dhcp.hasta');
 
   return { ok: true, value: { lanIp, wanIp: wanIp ?? null, ssid, dhcpStart: desde, dhcpEnd: hasta } };
 }
@@ -450,8 +453,52 @@ function fromIssue(issue: LabIssue): { ok: false; failure: CaseFailure } {
     return failure('cable-invalido', undefined, { code: issue.code, params: issue.params });
   }
   // A link issue with no domain code should not happen; the field path is still worth saying.
-  return invalid(issue.path);
+  return invalid(fieldPath(issue.path));
 }
+
+/**
+ * Rewrites a domain path into the payload vocabulary the message shows (S57), so a teacher
+ * reads `dispositivos[1].ip.ip` and not `lab.devices[2].manualIp`. Two differences matter: the
+ * payload has no Internet node, so its indexes are one below the domain ones, and its field
+ * names are the short ones of the schema.
+ */
+function fieldPath(path: string): string {
+  if (path === 'lab.devices') return 'dispositivos';
+
+  const device = /^lab\.devices\[(\d+)\](?:\.(.+))?$/.exec(path);
+  if (device) {
+    const index = Number(device[1]);
+    const field = device[2];
+    // Index 0 is the Internet node, which has no entry in `dispositivos`.
+    if (field === undefined || index === 0) return 'dispositivos';
+    return `dispositivos[${index - 1}].${DEVICE_FIELD[field] ?? field}`;
+  }
+
+  const router = /^lab\.router\.(.+)$/.exec(path);
+  if (router) return `router.${ROUTER_FIELD[router[1]] ?? router[1]}`;
+  if (path === 'lab.router') return 'router';
+
+  const link = /^lab\.links\[(\d+)\]/.exec(path);
+  if (link) return `cables[${link[1]}]`;
+
+  return 'lab';
+}
+
+/** Only the fields whose payload name differs from the domain one. */
+const DEVICE_FIELD: Record<string, string> = {
+  kind: 'k',
+  name: 'n',
+  'position.x': 'x',
+  'position.y': 'y',
+  ethernetEnabled: 'eth',
+  wifiEnabled: 'wifi',
+  wifiAssociated: 'asoc',
+  addressing: 'ip',
+  manualIp: 'ip.ip',
+  manualGateway: 'ip.gw',
+};
+
+const ROUTER_FIELD: Record<string, string> = { dhcpStart: 'dhcp.desde', dhcpEnd: 'dhcp.hasta' };
 
 /* ------------------------------------------------------------------------------------
  * base64url over UTF-8, no dependencies and no compression (S48, S64)
