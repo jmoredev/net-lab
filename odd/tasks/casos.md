@@ -151,7 +151,7 @@ Note que el índice `0` es el primer dispositivo de `dispositivos` (el router) y
 
 | ID | Tarea | Specs | Ruta | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | Validador estricto de `Lab` en el dominio; `storage.ts` pasa a llamador | S60, D30 | worker | — |
+| T1 | Validador estricto de `Lab` en el dominio; `storage.ts` pasa a llamador | S60, D30 | inline | `49d8e47` |
 | T2 | Codec: sobre versionado, base64url UTF-8, límites y los seis códigos | S43, S44, S47, S48, S57, S59 | worker | — |
 | T3 | Payload validado → `Lab`: ids y `seq` deterministas, Internet implícito, cableado por índice | S45, S46, S61 | worker | — |
 | T4 | Tope de 20 dispositivos en la paleta, con su mensaje y sus tests | S47, D29 | worker | — |
@@ -381,3 +381,11 @@ Mejora 1 — Casos: exportar/importar el laboratorio y repartirlo por enlace
 Se corrigieron además cuatro afirmaciones del borrador que el código desmiente: `storage.ts` **no** tiene un validador que se pueda compartir tal cual, devuelve `Lab | null` y es más laxo que el dominio; el fallback de portapapeles con `textarea` + `select()` **no copia**; `atob` antes de medir el tamaño es un DoS trivial; y el nodo Internet, con id fijo `internet`, no puede regenerar su id sin disparar `router-no-wan` en todos los casos.
 
 Decisiones nuevas que salieron de esta revisión: D27 (payload alineado), D28 (Internet implícito), D29 (el tope de 20 es del dominio y los cables pierden su tope de 40), D30 (endurecer `storage.ts`), D31 (confirmación en el arranque cuando hay trabajo propio), D32 (el caso se persiste y se muestra) y D33 (`{detalle}` reutiliza los mensajes del dominio).
+
+**L3 — T1 entregada (`49d8e47`).** El validador único vive en `src/domain/labSchema.ts` y devuelve el primer problema con la ruta del campo (`lab.devices[3].manualIp`) y, cuando el dominio ya sabe decirlo, el código y los parámetros: por eso la importación de T2 podrá reutilizar los textos de `es.ts` en vez de inventar un vocabulario paralelo. `src/ui/storage.ts` quedó en 90 líneas: sobre, `localStorage` y nada más.
+
+Lo que el validador nuevo rechaza y el viejo dejaba pasar, todo con test: ids de dispositivo o de cable repetidos, el mismo puerto cableado dos veces, `manualIp` y `manualGateway` que no son IPv4, dos routers, un nodo Internet con otro id, nombres repetidos, rango DHCP invertido, fuera de 2..254 o que incluye al router, dirección de router en broadcast, el emparejamiento WAN y un cable desde un móvil.
+
+Dos lecciones del propio trabajo: el test del laboratorio vacío destapó que `isProblem` no contemplaba el `null` legítimo de «todavía no hay router» (corregido en el mismo commit), y el catálogo exhaustivo de `messages.test.ts` —39 códigos ahora— obligó a registrar `too-many-devices` y `name-too-long` antes de compilar, que es exactamente la guardia que S60 pedía para que un código nuevo no se pierda.
+
+Verificación: `tsc` limpio y **210 tests en verde**, 34 nuevos (27 del validador por ruta y código de problema, 4 de los dos límites, 3 que prueban que `storage.ts` usa el mismo validador). El límite de 20 y el de 40 caracteres entraron acá con sus mensajes en los dos idiomas, porque sin ellos cualquier laboratorio construido en la app quedaría sin poder exportarse (S49).
