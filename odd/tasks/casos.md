@@ -50,13 +50,13 @@ La cadena cruda se mide **antes** de llamar a `atob`: un `#c=` de 10 MB pegado p
 
 **S49 — Se exporta desde cualquier estado, incluido el ejemplo precargado.** No hay estado del que no se pueda sacar un caso.
 
-**S50 — Dos salidas con la misma información.** Copiar el enlace completo (`location.origin + location.pathname + '#c=' + payload`, nunca una base hardcodeada) y descargar `netlab-<slug>-<AAAA-MM-DD>.json`. El slug sale de `caso.titulo` cuando existe y si no de `laboratorio`, normalizado: NFD, sin diacríticos, minúsculas, `[a-z0-9-]`, máximo 40, colapsando guiones. La descarga es `Blob` + `URL.createObjectURL` + `<a download>` + `revokeObjectURL`, sin dependencias.
+**S50 — Dos salidas con la misma información.** Copiar el enlace completo (`location.origin + location.pathname + '#c=' + payload`, nunca una base hardcodeada) y descargar `netlab-<slug>-<AAAA-MM-DD>.json`. El slug sale de `caso.titulo` cuando existe y si no de `laboratorio`, normalizado: NFD, sin diacríticos, minúsculas, `[a-z0-9-]`, máximo 40, colapsando guiones. La descarga es `Blob` + `URL.createObjectURL` + `<a download>` + `revokeObjectURL`, sin dependencias. **El fichero contiene el documento JSON del payload, indentado**, no el código base64: un archivo que se llama `.json` tiene que poder abrirse, leerse y corregirse a mano, y volver a importarse. El enlace lleva la forma compacta, porque ahí cada byte cuesta un carácter de URL.
 
 **S51 — El diálogo de exportación pide el caso, opcionalmente.** Título, consigna y autor. Los tres vacíos → se exporta sin bloque `caso`. Un alumno puede exportar su red sin título.
 
 **S52 — Portapapeles con fallback honesto.** `navigator.clipboard.writeText` primero. Si no hay contexto seguro o no hay permiso: `textarea` + `select()` + `document.execCommand('copy')`. Si eso también falla, el texto queda seleccionado y el aviso dice explícitamente que hay que pulsar Ctrl+C. Nunca un aviso de éxito sin haber copiado: `select()` solo no copia nada.
 
-**S53 — Un solo campo acepta las tres formas.** URL completa (`…/#c=…`), fragmento (`#c=…`) y código pelado (`v1…`). Se recorta el espacio en blanco que agregan los chats al pegar.
+**S53 — Un solo campo acepta cuatro formas.** URL completa (`…/#c=…`), fragmento (`#c=…`), código pelado (`v1…`) y el documento JSON del `.json` exportado, que se lee como objeto y pasa por las mismas reglas. Se recorta el espacio en blanco que agregan los chats al pegar.
 
 **S54 — También acepta un fichero.** Arrastrado o elegido, `.json` exportado o `.txt` con el enlace dentro: es la misma cadena y el mismo analizador. Tope de tamaño antes de leer (`file.size > 65536` → `payload-demasiado-grande`), porque `File.text()` es asíncrono y no hay razón para leer 40 MB.
 
@@ -156,7 +156,7 @@ Note que el índice `0` es el primer dispositivo de `dispositivos` (el router) y
 | T3 | *(absorbida por T2)* Separarla exigiría validar cables sin el laboratorio armado, que es exactamente la lógica de puertos que no se quiere tener dos veces | S45, S46, S61 | — | — |
 | T4 | Tope de 20 dispositivos en la paleta, con su mensaje y sus tests | S47, D29 | inline | `10830e2` |
 | T5 | Panel del caso, persistido en `net-lab:caso:v1` | S45, D32 | inline | `8441106` |
-| T6 | Diálogo de exportación: enlace, `.json`, portapapeles con fallback | S49, S50, S51, S52 | worker | — |
+| T6 | Diálogo de exportación: enlace, `.json`, portapapeles con fallback | S49, S50, S51, S52 | worker | `b0a0160` |
 | T7 | Diálogo de importación: campo, fichero, confirmación, errores | S53, S54, S55, S56 | worker | — |
 | T8 | Arranque con `#c=` y limpieza del fragmento | S58, D31 | worker | — |
 | T9 | i18n de todo lo nuevo, accesibilidad y lista de comprobación manual | S57, S62, S63, S64 | inline | — |
@@ -424,3 +424,13 @@ La persistencia vive en un hook, `useStoredCase`, y no en `labReducer`, a propó
 Estado honesto: hoy **nada** asigna el caso, así que el panel está cableado y oculto. Lo encienden el diálogo de exportación (T6) y la importación (T7). Quince tests nuevos: ida y vuelta del almacenamiento con sus fixtures rechazados, el hook sobreviviendo a un montaje nuevo y borrando sin tocar la clave del laboratorio, y el panel mostrando una consigna con pinta de marcado como texto plano.
 
 Verificación: `tsc` limpio y **282 tests en verde** en 21 archivos. `assess` lo clasificó como riesgo medio sin revisión nativa ni verificador independiente: autoverificación.
+
+**L8 — T6 entregada (`b0a0160`).** El diálogo de compartir vive en la barra superior. El enlace se arma con `location.origin + location.pathname`, nunca con una base fija, así que sobrevive a que el repositorio cambie de dominio; el fichero se llama `netlab-<slug>-<fecha>.json`, con el slug desde el título, sin acentos, cortado a cuarenta y con `laboratorio` de reserva. Los tres campos son opcionales: vacíos, el payload no lleva bloque `caso` y viaja solo el laboratorio. Lo que se comparte pasa a ser el caso del laboratorio en pantalla, que es lo que finalmente enciende el panel de T5.
+
+Copiar es honesto: `navigator.clipboard.writeText`, después un `textarea` con `execCommand('copy')` y, si ninguno de los dos funciona, el enlace ya está en un campo de solo lectura, seleccionado, con un aviso de que hay que pulsar Ctrl+C. La función no puede devolver «copiado» cuando solo seleccionó texto, que es la confusión que traía el borrador original de R4.
+
+**Una corrección sobre el trabajo del worker.** El `.json` descargado contenía el código base64: un archivo con extensión `.json` que no es JSON, ilegible para quien lo abra. Ahora el fichero lleva el documento indentado —se puede leer, corregir una errata y volver a importar— y el enlace sigue llevando la forma compacta, porque ahí cada byte cuesta un carácter de URL. Como consecuencia, `decodeCase` acepta el documento como cuarta forma, con el mismo tope de 16 KB, y S53 pasó de tres a cuatro formas.
+
+Dos decisiones menores del worker que dejo como están: el caso se guarda al pedir compartir, antes de que el portapapeles conteste (si falla, la verdad es que el enlace está en pantalla), y el diálogo no se cierra solo tras copiar, para poder llevarse las dos salidas de una visita.
+
+Verificación: `tsc` limpio y **307 tests en verde** en 23 archivos. `assess`: riesgo medio, sin revisión nativa ni verificador independiente.
