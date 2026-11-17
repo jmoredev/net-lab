@@ -28,6 +28,7 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'palette.label': 'Paleta de dispositivos',
   'palette.title': 'Dispositivos',
   'palette.routerTaken': 'Ya hay un router en el laboratorio.',
+  'palette.full': 'El laboratorio ya tiene {max} dispositivos.',
   'palette.hint': 'Pulsa un dispositivo para añadirlo o arrástralo al lienzo.',
   'palette.trashHint': 'Suelta aquí para eliminar',
 

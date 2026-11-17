@@ -1,4 +1,5 @@
 import type { Dispatch } from 'react';
+import { MAX_DEVICES } from '../../domain/types';
 import { useI18n } from '../../i18n/LanguageProvider';
 import { deviceKindLabel } from '../format';
 import { nextFreePosition } from '../geometry';
@@ -19,6 +20,8 @@ export interface DevicePaletteProps {
 export function DevicePalette({ state, dispatch, busy, draggingId }: DevicePaletteProps) {
   const { t, lang } = useI18n();
   const routerTaken = state.lab.router !== null;
+  // The Internet node never counts: the cap is the same one a case payload can carry (D29).
+  const full = state.lab.devices.filter((device) => device.kind !== 'internet').length >= MAX_DEVICES;
   const trash = draggingId !== null;
 
   return (
@@ -30,7 +33,7 @@ export function DevicePalette({ state, dispatch, busy, draggingId }: DevicePalet
       <h2 className="zone__title">{t('palette.title')}</h2>
       <ul className="palette__list">
         {PALETTE_KINDS.map((kind) => {
-          const disabled = busy || (kind === 'router' && routerTaken);
+          const disabled = busy || full || (kind === 'router' && routerTaken);
           return (
             <li key={kind}>
               <button
@@ -54,6 +57,7 @@ export function DevicePalette({ state, dispatch, busy, draggingId }: DevicePalet
           );
         })}
       </ul>
+      {full ? <p className="palette__note">{t('palette.full', { max: MAX_DEVICES })}</p> : null}
       {routerTaken ? <p className="palette__note">{t('palette.routerTaken')}</p> : null}
       {trash ? (
         <p className="palette__hint palette__hint--trash">{t('palette.trashHint')}</p>

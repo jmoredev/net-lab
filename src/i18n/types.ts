@@ -32,6 +32,7 @@ export type UiKey =
   | 'palette.label'
   | 'palette.title'
   | 'palette.routerTaken'
+  | 'palette.full'
   | 'palette.hint'
   | 'palette.trashHint'
   // Device names of the palette, resolved instead of `CAPABILITIES[kind].label` (S40).
