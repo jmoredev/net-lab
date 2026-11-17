@@ -19,6 +19,7 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'case.by': 'Por {author}',
   'header.clearLab': 'Vaciar laboratorio',
   'header.shareCase': 'Compartir caso',
+  'header.importCase': 'Abrir caso',
   'banner.dismiss': 'Descartar',
   'confirm.loadExample': '¿Seguro que quieres cargar el ejemplo? Se quitarán todos los dispositivos y sus cables.',
   'confirm.clearLab': '¿Seguro que quieres vaciar el laboratorio? Se quitarán todos los dispositivos y sus cables.',
@@ -36,7 +37,21 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'export.copied': 'Enlace copiado.',
   'export.copyManual': 'No se pudo copiar solo. El enlace está seleccionado: pulsa Ctrl+C.',
   'export.downloaded': 'Descarga iniciada: {file}',
-  'export.close': 'Cerrar',
+
+  // Import dialog (S53–S55)
+  'import.title': 'Abrir un caso',
+  'import.hint':
+    'Pega el enlace, el código o el contenido del fichero .json. También puedes arrastrarlo aquí.',
+  'import.fieldLabel': 'Enlace, código o fichero',
+  'import.action': 'Abrir',
+  'import.chooseFile': 'Elegir un fichero',
+  'import.confirmReplace':
+    'Esto reemplaza el laboratorio que tienes abierto. ¿Seguir?',
+  'import.done': 'Caso abierto: {title}',
+  'import.empty': 'Pega algo primero.',
+
+  // Shared by both dialogs (S63)
+  'dialog.close': 'Cerrar',
 
   // Language switcher (S36)
   'lang.switcher': 'Idioma',

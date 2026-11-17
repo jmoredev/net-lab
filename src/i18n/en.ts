@@ -15,6 +15,7 @@ export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'case.by': 'By {author}',
   'header.clearLab': 'Clear lab',
   'header.shareCase': 'Share case',
+  'header.importCase': 'Open case',
   'banner.dismiss': 'Dismiss',
   'confirm.loadExample': 'Load the example? Every device and cable in the lab will be removed.',
   'confirm.clearLab': 'Clear the lab? Every device and cable will be removed.',
@@ -32,7 +33,20 @@ export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'export.copied': 'Link copied.',
   'export.copyManual': 'It could not be copied on its own. The link is selected: press Ctrl+C.',
   'export.downloaded': 'Download started: {file}',
-  'export.close': 'Close',
+
+  // Import dialog (S53–S55)
+  'import.title': 'Open a case',
+  'import.hint':
+    'Paste the link, the code or the contents of the .json file. You can also drop it here.',
+  'import.fieldLabel': 'Link, code or file',
+  'import.action': 'Open',
+  'import.chooseFile': 'Choose a file',
+  'import.confirmReplace': 'This replaces the lab you have open. Continue?',
+  'import.done': 'Case opened: {title}',
+  'import.empty': 'Paste something first.',
+
+  // Shared by both dialogs (S63)
+  'dialog.close': 'Close',
 
   // Language switcher (S36)
   'lang.switcher': 'Language',

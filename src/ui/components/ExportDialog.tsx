@@ -183,7 +183,7 @@ export function ExportDialog({ open, lab, initialMeta, onClose, onExported }: Ex
           {t('export.actionDownload')}
         </button>
         <button type="button" className="button" onClick={onClose}>
-          {t('export.close')}
+          {t('dialog.close')}
         </button>
       </div>
 
