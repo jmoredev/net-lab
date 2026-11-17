@@ -157,7 +157,7 @@ Note que el índice `0` es el primer dispositivo de `dispositivos` (el router) y
 | T4 | Tope de 20 dispositivos en la paleta, con su mensaje y sus tests | S47, D29 | inline | `10830e2` |
 | T5 | Panel del caso, persistido en `net-lab:caso:v1` | S45, D32 | inline | `8441106` |
 | T6 | Diálogo de exportación: enlace, `.json`, portapapeles con fallback | S49, S50, S51, S52 | worker | `b0a0160` |
-| T7 | Diálogo de importación: campo, fichero, confirmación, errores | S53, S54, S55, S56 | worker | — |
+| T7 | Diálogo de importación: campo, fichero, confirmación, errores | S53, S54, S55, S56, S57 | worker | `c41446c` |
 | T8 | Arranque con `#c=` y limpieza del fragmento | S58, D31 | worker | — |
 | T9 | i18n de todo lo nuevo, accesibilidad y lista de comprobación manual | S57, S62, S63, S64 | inline | — |
 
@@ -450,4 +450,14 @@ El revisor de resiliencia del tramo de dominio levantó R4-001 como crítico: `p
 La asimetría se sostiene y es la decisión correcta, porque las dos alternativas son peores: forzar el tope al cargar tiraría el trabajo del alumno, y sacarlo del codificador produciría un caso que la importación rechaza. `src/ui/__tests__/storage.test.ts` fija los tres pasos: carga, el codificador lo rechaza con `demasiados-dispositivos` y `{ n: 21 }`, y vuelve a exportarse apenas sobra un dispositivo.
 
 Verificación: `tsc` limpio y **268 tests en verde** en 19 archivos.
+
+**L11 — T7 entregada (`c41446c`).** (Entrada del tramo 2b, renumerada al mergear `main`, que ya tenía la L9 y la L10.) El diálogo de abrir acepta las cuatro formas del codec —URL completa, fragmento, código pelado y documento `.json`— y además las recibe arrastradas o elegidas como fichero. Las cuatro formas son asunto de `decodeCase` y no del diálogo: cada fallo llega ya como un código con sus parámetros, así que el diálogo compone `t(código, params)` y, cuando el fallo es `cable-invalido`, traduce el `detail` como `{detalle}` de la frase. Un docente lee «Hay un cable que no se puede conectar: Ese puerto ya está ocupado.» y no una ruta de campo.
+
+Reemplazar pide confirmación solo cuando hay trabajo que perder. La importación entra por la acción `load` del reducer, así que es atómica y el efecto de persistencia que ya existía la guarda en el mismo acto; el caso viaja a `net-lab:caso:v1` y el panel de T5 por fin se llena solo. La lectura del fichero se acota antes de leerlo y el tope real sigue siendo el del codec.
+
+**Una corrección sobre la versión del worker.** `isExampleLab` comparaba el laboratorio entero, contadores incluidos, así que un laboratorio que *muestra* el ejemplo —mismos dispositivos, mismos cables, mismo router— contaba como trabajo ajeno si el `seq` se había movido, que es lo que le pasa a cualquier caso importado por construcción. Ahora la comparación mira solo lo que el alumno puede ver: dispositivos sin `id` ni `mac`, cables por índice de dispositivo y el bloque del router con su dispositivo por índice. Los contadores son contabilidad, y la contabilidad no decide si se pregunta.
+
+Sinceridad sobre el método: la corrección de `isExampleLab` no se hizo con el test primero; el test que la fija se escribió después y pasó a la primera. Lo que sí está claro es que el test la fija: con la comparación vieja, el primer caso del archivo `labComparisonExample.test.ts` falla.
+
+Verificación: `tsc` limpio y **353 tests en verde** en 26 archivos. Los 45 nuevos cubren las cuatro formas, los seis fallos renderizados por el catálogo, la tabla de verdad de la confirmación, el tope del fichero, el `.json` por el input de fichero y la comparación con su ida y vuelta. `assess`: riesgo medio, sin revisión nativa ni verificador independiente.
 

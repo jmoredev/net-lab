@@ -8,6 +8,7 @@ import { resolveStoredMessage } from './i18n';
 import type { Travel } from './ui/animation';
 import { CasePanel } from './ui/components/CasePanel';
 import { ExportDialog } from './ui/components/ExportDialog';
+import { ImportDialog } from './ui/components/ImportDialog';
 import { DevicePalette } from './ui/components/DevicePalette';
 import { DevicePanel, type SendProblem } from './ui/components/DevicePanel';
 import { LabCanvas } from './ui/components/LabCanvas';
@@ -44,6 +45,8 @@ function NetLab() {
   const [caseMeta, setCaseMeta] = useStoredCase();
   /** The export dialog of S50 is open: a native `<dialog>`, so no library and no portal (S63). */
   const [exportOpen, setExportOpen] = useState(false);
+  /** The import dialog of S53 opens on the lab on screen, which it may replace (S55, S56). */
+  const [importOpen, setImportOpen] = useState(false);
   /** Device being dragged on the canvas: the palette turns into the trash zone (S11). */
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const statuses = useMemo(() => computeStatus(state.lab), [state.lab]);
@@ -117,6 +120,14 @@ function NetLab() {
           >
             {t('header.shareCase')}
           </button>
+          <button
+            type="button"
+            className="button"
+            disabled={busy}
+            onClick={() => setImportOpen(true)}
+          >
+            {t('header.importCase')}
+          </button>
           <LanguageSwitch />
         </div>
       </header>
@@ -150,6 +161,19 @@ function NetLab() {
         initialMeta={caseMeta}
         onClose={() => setExportOpen(false)}
         onExported={setCaseMeta}
+      />
+
+      {/* Importing is all or nothing (S56): the case arrives decoded, `load` replaces the
+          lab atomically and the effect above stores it. The case of the file has its own
+          key, so the brief of the document survives the reload (D32). */}
+      <ImportDialog
+        open={importOpen}
+        lab={state.lab}
+        onClose={() => setImportOpen(false)}
+        onImport={(data) => {
+          dispatch({ type: 'load', lab: data.lab });
+          setCaseMeta(data.meta);
+        }}
       />
 
       <div className="app__body">

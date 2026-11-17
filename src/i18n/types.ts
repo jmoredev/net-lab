@@ -25,6 +25,7 @@ export type UiKey =
   | 'case.by'
   | 'header.clearLab'
   | 'header.shareCase'
+  | 'header.importCase'
   | 'banner.dismiss'
   | 'confirm.loadExample'
   | 'confirm.clearLab'
@@ -40,7 +41,17 @@ export type UiKey =
   | 'export.copied'
   | 'export.copyManual'
   | 'export.downloaded'
-  | 'export.close'
+  // Import dialog (S53–S55).
+  | 'import.title'
+  | 'import.hint'
+  | 'import.fieldLabel'
+  | 'import.action'
+  | 'import.chooseFile'
+  | 'import.confirmReplace'
+  | 'import.done'
+  | 'import.empty'
+  // The one word for closing, shared by both dialogs (S63).
+  | 'dialog.close'
   // Language switcher (S36, D24).
   | 'lang.switcher'
   | 'lang.es'

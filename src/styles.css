@@ -228,6 +228,25 @@ body {
   color: var(--state-offline);
 }
 
+/* The import dialog is one big drop target (S54): while a file hovers it, the whole frame
+   says so, so the drop is a deliberate act and not a surprise. */
+.dialog__drop {
+  transition: border-color 120ms ease;
+}
+
+.dialog__drop--active {
+  border-color: var(--accent);
+  outline: 2px dashed var(--accent);
+  outline-offset: -6px;
+}
+
+/* The failure of an import, next to the field that has to be corrected (S57). */
+.dialog__error {
+  margin: 8px 0 0;
+  font-size: 0.875rem;
+  color: var(--state-offline);
+}
+
 .zone__title {
   margin: 0 0 12px;
   font-size: 0.75rem;
