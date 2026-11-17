@@ -151,7 +151,7 @@ Note que el índice `0` es el primer dispositivo de `dispositivos` (el router) y
 
 | ID | Tarea | Specs | Ruta | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | Validador estricto de `Lab` en el dominio; `storage.ts` pasa a llamador | S60, D30 | inline | `49d8e47` |
+| T1 | Validador estricto de `Lab` en el dominio; `storage.ts` pasa a llamador | S60, D30 | inline | `49d8e47`, `795d454` |
 | T2 | Codec: sobre versionado, base64url UTF-8, límites y los seis códigos | S43, S44, S47, S48, S57, S59 | worker | — |
 | T3 | Payload validado → `Lab`: ids y `seq` deterministas, Internet implícito, cableado por índice | S45, S46, S61 | worker | — |
 | T4 | Tope de 20 dispositivos en la paleta, con su mensaje y sus tests | S47, D29 | worker | — |
@@ -389,3 +389,12 @@ Lo que el validador nuevo rechaza y el viejo dejaba pasar, todo con test: ids de
 Dos lecciones del propio trabajo: el test del laboratorio vacío destapó que `isProblem` no contemplaba el `null` legítimo de «todavía no hay router» (corregido en el mismo commit), y el catálogo exhaustivo de `messages.test.ts` —39 códigos ahora— obligó a registrar `too-many-devices` y `name-too-long` antes de compilar, que es exactamente la guardia que S60 pedía para que un código nuevo no se pierda.
 
 Verificación: `tsc` limpio y **210 tests en verde**, 34 nuevos (27 del validador por ruta y código de problema, 4 de los dos límites, 3 que prueban que `storage.ts` usa el mismo validador). El límite de 20 y el de 40 caracteres entraron acá con sus mensajes en los dos idiomas, porque sin ellos cualquier laboratorio construido en la app quedaría sin poder exportarse (S49).
+
+**L4 — El verificador independiente encontró dos bloqueantes, y eran reales (`795d454`).** El plan de `assess` marcó `reviewDue: false` (bajo presupuesto) pero exigió verificador independiente, y ahí apareció lo que ningún test mío cubría. Los dos defectos terminaban igual: la app construía un laboratorio válido para ella, lo guardaba, y al recargar `parseLab` lo descartaba y `App.tsx` caía en el laboratorio vacío. Pérdida de trabajo invisible.
+
+- **`setRouterLanIp` no comprobaba el rango DHCP.** Con el rango por defecto 2..100, cualquier dirección de router entre .2 y .100 creaba el estado que `setDhcpRange` ya rechazaba desde el otro lado. Ahora la rechaza con el código nuevo `router-ip-in-dhcp-range`, que viaja con el rango en conflicto.
+- **`defaultName` comparaba sin minúsculas** mientras `renameDevice` compara en minúsculas: renombrar a `LAPTOP-1` y agregar otro portátil producía dos `Laptop-1` para el validador. Ahora los dos comparan igual.
+
+Consecuencia para el método: la regla «lo que el dominio construye debe pasar el validador» ahora tiene tests propios en `labSchema.test.ts`, incluido el laboratorio del ejemplo precargado. Dos fixtures tuvieron que mover el rango antes de fijar la dirección del router, porque construían justo el estado que ahora se prohíbe; no se cambió ninguna aserción ni se quitó cobertura.
+
+Verificación final de T1: `tsc` limpio y **215 tests en verde**.
