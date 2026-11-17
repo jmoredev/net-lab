@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createExampleLab } from '../../domain/example';
 import { addDevice, connectCable, createLab, setAddressing, type Lab } from '../../domain/lab';
 import type { Result } from '../../domain/types';
 import { STORAGE_KEY, clearLab, loadLab, parseLab, saveLab, serialize } from '../storage';
@@ -139,6 +140,33 @@ describe('storage: discarded data (S31)', () => {
     expect(lab.router).not.toBeNull();
     expect(parseJson({ version: 1, lab: { ...lab, router: { ...lab.router, deviceId: 'd999' } } })).toBeNull();
     expect(parseJson({ version: 1, lab: { ...lab, router: null } })).toBeNull();
+  });
+});
+
+describe('storage: the shared validator rejects what the old one let through (D30)', () => {
+  it('discards a lab with the same port wired twice', () => {
+    const lab = sampleLab();
+    const links = [...lab.links, { ...lab.links[0], id: 'l90' }];
+    expect(parseJson({ version: 1, lab: { ...lab, links } })).toBeNull();
+  });
+
+  it('discards a lab with an address that is not an IPv4', () => {
+    const lab = sampleLab();
+    const devices = lab.devices.map((device, index) =>
+      index === 2 ? { ...device, manualIp: '192.168.1' } : device,
+    );
+    expect(parseJson({ version: 1, lab: { ...lab, devices } })).toBeNull();
+  });
+
+  it('discards a lab with two routers', () => {
+    const lab = sampleLab();
+    const devices = [...lab.devices, { ...lab.devices[1], id: 'd90', name: 'Router 2' }];
+    expect(parseJson({ version: 1, lab: { ...lab, devices } })).toBeNull();
+  });
+
+  it('round-trips the lab of the shipped example', () => {
+    const lab = createExampleLab();
+    expect(parseLab(serialize(lab))).toEqual(lab);
   });
 });
 
