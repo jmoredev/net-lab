@@ -131,28 +131,36 @@ function NetLab() {
       <header className="app__header">
         <h1 className="app__title">{t('app.title')}</h1>
         <div className="app__actions">
-          <button type="button" className="button" disabled={busy} onClick={loadExample}>
-            {t('header.loadExample')}
-          </button>
-          <button type="button" className="button" disabled={busy} onClick={resetLab}>
-            {t('header.clearLab')}
-          </button>
-          <button
-            type="button"
-            className="button"
-            disabled={busy}
-            onClick={() => setExportOpen(true)}
-          >
-            {t('header.shareCase')}
-          </button>
-          <button
-            type="button"
-            className="button"
-            disabled={busy}
-            onClick={() => setImportOpen(true)}
-          >
-            {t('header.importCase')}
-          </button>
+          {/* Two groups, because they are two kinds of gesture: what happens to the lab and
+              what reads or writes a file. "Vaciar laboratorio" never shares a row with the
+              button that saves a case, and each group carries its own name for the screen
+              reader (like the language switch below). */}
+          <div className="app__group" role="group" aria-label={t('header.labGroup')}>
+            <button type="button" className="button" disabled={busy} onClick={loadExample}>
+              {t('header.loadExample')}
+            </button>
+            <button type="button" className="button" disabled={busy} onClick={resetLab}>
+              {t('header.clearLab')}
+            </button>
+          </div>
+          <div className="app__group" role="group" aria-label={t('header.caseGroup')}>
+            <button
+              type="button"
+              className="button"
+              disabled={busy}
+              onClick={() => setImportOpen(true)}
+            >
+              {t('header.importCase')}
+            </button>
+            <button
+              type="button"
+              className="button"
+              disabled={busy}
+              onClick={() => setExportOpen(true)}
+            >
+              {t('header.shareCase')}
+            </button>
+          </div>
           <LanguageSwitch />
         </div>
       </header>

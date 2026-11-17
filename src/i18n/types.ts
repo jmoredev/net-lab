@@ -19,7 +19,9 @@ export type { CaseMessageCode, DomainMessageCode, MessageParams } from '../domai
 export type UiKey =
   // Shell: title, header buttons, banner and the two confirmation questions (D23).
   | 'app.title'
+  | 'header.labGroup'
   | 'header.loadExample'
+  | 'header.caseGroup'
   | 'case.label'
   | 'case.untitled'
   | 'case.by'

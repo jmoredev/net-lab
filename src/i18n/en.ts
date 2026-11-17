@@ -9,7 +9,9 @@ import type { UiKey } from './types';
 export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   // Shell
   'app.title': 'Net-Lab — network lab',
+  'header.labGroup': 'Lab',
   'header.loadExample': 'Load example',
+  'header.caseGroup': 'Case',
   'case.label': 'Case brief',
   'case.untitled': 'Untitled case',
   'case.by': 'By {author}',

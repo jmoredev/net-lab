@@ -13,7 +13,9 @@ import type { UiKey } from './types';
 export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   // Shell
   'app.title': 'Net-Lab — laboratorio de redes',
+  'header.labGroup': 'Laboratorio',
   'header.loadExample': 'Cargar ejemplo',
+  'header.caseGroup': 'Caso',
   'case.label': 'Enunciado del caso',
   'case.untitled': 'Caso sin título',
   'case.by': 'Por {author}',

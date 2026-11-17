@@ -59,6 +59,19 @@ body {
   align-items: center;
 }
 
+/* The header holds two groups of buttons: the lab and the case file. The hairline is the
+   whole separation, so the row reads as two gestures rather than four buttons in a row. */
+.app__group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app__group + .app__group {
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+}
+
 /* Language switcher (S36, D24): two contiguous controls, the active one in the accent colour.
    Only the variables of the palette are used, so it follows the rest of the shell. */
 .lang-switch {
