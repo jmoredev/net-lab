@@ -3,6 +3,7 @@ import { decodeCase, type CaseData, type CaseFailure } from '../../domain/case';
 import type { Lab } from '../../domain/lab';
 import { useI18n } from '../../i18n/LanguageProvider';
 import type { MessageKey, MessageParams } from '../../i18n/types';
+import { caseFailureText } from '../caseMessage';
 import { needsReplaceConfirmation } from '../labComparison';
 
 /** A file bigger than this is refused before it is read (S54). */
@@ -236,10 +237,5 @@ function tooLarge(n: number): CaseFailure {
 /** The failure in the language on screen, never a raw message or a field path of our own (S57). */
 function problemText(t: Translate, problem: Problem): string {
   if (problem.kind === 'empty') return t('import.empty');
-
-  const { code, params, detail } = problem.failure;
-  if (detail === undefined) return t(code, params);
-  // A cable failure reuses the sentence the domain already knows how to say (S57, D33), so
-  // the student reads exactly what they would get by trying that cable in the app.
-  return t(code, { ...params, detalle: t(detail.code, detail.params) });
+  return caseFailureText(t, problem.failure);
 }

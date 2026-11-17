@@ -6,6 +6,7 @@ import { findHops } from './domain/path';
 import { LanguageProvider, useI18n } from './i18n/LanguageProvider';
 import { resolveStoredMessage } from './i18n';
 import type { Travel } from './ui/animation';
+import { caseFailureText } from './ui/caseMessage';
 import { CasePanel } from './ui/components/CasePanel';
 import { ExportDialog } from './ui/components/ExportDialog';
 import { ImportDialog } from './ui/components/ImportDialog';
@@ -14,6 +15,8 @@ import { DevicePanel, type SendProblem } from './ui/components/DevicePanel';
 import { LabCanvas } from './ui/components/LabCanvas';
 import { LanguageSwitch } from './ui/components/LanguageSwitch';
 import { initialLabState, labReducer, labStateWith } from './ui/labReducer';
+import { needsReplaceConfirmation } from './ui/labComparison';
+import { clearFragment, readCaseFromHash, type StartupCase } from './ui/startup';
 import { clearLab, loadLab, saveLab } from './ui/storage';
 import { useStoredCase } from './ui/useStoredCase';
 
@@ -47,6 +50,8 @@ function NetLab() {
   const [exportOpen, setExportOpen] = useState(false);
   /** The import dialog of S53 opens on the lab on screen, which it may replace (S55, S56). */
   const [importOpen, setImportOpen] = useState(false);
+  /** What a `#c=` link carried when the app started, and why it was refused when it was (S58). */
+  const [boot, setBoot] = useState<StartupCase | null>(null);
   /** Device being dragged on the canvas: the palette turns into the trash zone (S11). */
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const statuses = useMemo(() => computeStatus(state.lab), [state.lab]);
@@ -61,6 +66,26 @@ function NetLab() {
     if (hasDevices) saveLab(state.lab);
     else clearLab();
   }, [state.lab, busy, hasDevices]);
+
+  // A link that carries a case opens it before anything else, and the fragment goes in the same
+  // breath: a reload must never import again, not even after a failure (S58). With work on
+  // screen the student is asked first, so a link cannot wipe their lab by accident (D31).
+  // Mount only: the lab worth comparing against is the one that was just restored from storage.
+  useEffect(() => {
+    const startup = readCaseFromHash(window.location.hash);
+    if (startup === null) return;
+
+    clearFragment(window.history, window.location);
+
+    if (startup.data === null) {
+      setBoot(startup);
+      return;
+    }
+    if (needsReplaceConfirmation(state.lab) && !window.confirm(t('import.confirmReplace'))) return;
+
+    dispatch({ type: 'load', lab: startup.data.lab });
+    setCaseMeta(startup.data.meta);
+  }, []);
 
   const endTravel = useCallback(() => setTravel(null), []);
 
@@ -146,6 +171,17 @@ function NetLab() {
             className="button"
             onClick={() => dispatch({ type: 'dismiss-message' })}
           >
+            {t('banner.dismiss')}
+          </button>
+        </div>
+      ) : null}
+
+      {/* A link that could not be read leaves a sentence, not a blank screen: the fragment is
+          already gone, so this banner is the only trace of what happened (S58). */}
+      {boot !== null && boot.failure !== null ? (
+        <div className="banner" role="alert">
+          <p className="banner__text">{caseFailureText(t, boot.failure)}</p>
+          <button type="button" className="button" onClick={() => setBoot(null)}>
             {t('banner.dismiss')}
           </button>
         </div>
