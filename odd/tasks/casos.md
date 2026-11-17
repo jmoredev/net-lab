@@ -25,7 +25,7 @@ Estado: D26–D33 aprobadas por el usuario. En implementación, empezando por T1
 | `dispositivos[].wifi` | `wifiEnabled` | Booleano |
 | `dispositivos[].asoc` | `wifiAssociated` | Booleano. **Sin este campo, el diagnóstico no sobrevive la ida y vuelta** |
 | `dispositivos[].ip` ausente | `addressing: 'dhcp'`, `manualIp: null`, `manualGateway: null` | El modo se deriva de la presencia del campo |
-| `dispositivos[].ip: {ip, gw?}` | `addressing: 'manual'` + `manualIp` + `manualGateway` | `ip` obligatoria y IPv4 válida; `gw` IPv4 o `null`. Sin `gw`, `gateway-wrong` deja de ser alcanzable |
+| `dispositivos[].ip: {ip, gw?}` | `addressing: 'manual'` + `manualIp` + `manualGateway` | `ip` es IPv4 válida o `null`; `gw` es IPv4 o `null`. `null` es legal porque `setAddressing` acepta el modo manual sin dirección y S49 exige exportar cualquier estado. Sin `gw`, `gateway-wrong` deja de ser alcanzable |
 | `cables[] = {a, b}` | `Link` con `PortRef {deviceId, portId}` | Extremo `[índice, portId]`. **`portId` es string** (`wan`, `lan1`..`lan4`, `p1`..`p8`, `eth`), nunca un índice: `src/domain/types.ts:124-131` |
 
 No se serializa estado redundante: ni `addressing` (se deriva), ni `router.deviceId` (es el dispositivo de tipo `router`), ni `mac` (se deriva del `seq` reconstruido), ni `id` de dispositivos o cables, ni nada de UI (zoom, selección, idioma, animación).
@@ -152,8 +152,8 @@ Note que el índice `0` es el primer dispositivo de `dispositivos` (el router) y
 | ID | Tarea | Specs | Ruta | Commit |
 | --- | --- | --- | --- | --- |
 | T1 | Validador estricto de `Lab` en el dominio; `storage.ts` pasa a llamador | S60, D30 | inline | `49d8e47`, `795d454` |
-| T2 | Codec: sobre versionado, base64url UTF-8, límites y los seis códigos | S43, S44, S47, S48, S57, S59 | worker | — |
-| T3 | Payload validado → `Lab`: ids y `seq` deterministas, Internet implícito, cableado por índice | S45, S46, S61 | worker | — |
+| T2 | Codec y construcción del laboratorio: sobre versionado, base64url UTF-8, límites medidos antes de `atob`, los seis códigos, ids y `seq` deterministas e Internet implícito | S43–S48, S57, S59, S61 | worker | — |
+| T3 | *(absorbida por T2)* Separarla exigiría validar cables sin el laboratorio armado, que es exactamente la lógica de puertos que no se quiere tener dos veces | S45, S46, S61 | — | — |
 | T4 | Tope de 20 dispositivos en la paleta, con su mensaje y sus tests | S47, D29 | worker | — |
 | T5 | Panel del caso, persistido en `net-lab:caso:v1` | S45, D32 | worker | — |
 | T6 | Diálogo de exportación: enlace, `.json`, portapapeles con fallback | S49, S50, S51, S52 | worker | — |

@@ -104,6 +104,20 @@ export type ValidationMessageCode =
 /** Every message the domain can produce, identified by a stable kebab-case code. */
 export type DomainMessageCode = ValidationMessageCode | DiagnosticMessageCode;
 
+/**
+ * The six failures of importing or exporting a case (S57). These are pinned in Spanish on
+ * purpose: the specification fixes the identifiers one by one, and an import error has to
+ * mean the same thing in every version that still opens `v: 1`. The sentence a student
+ * reads comes from the catalogue, in the active language, like every other message.
+ */
+export type CaseMessageCode =
+  | 'formato-invalido'
+  | 'version-no-soportada'
+  | 'esquema-invalido'
+  | 'demasiados-dispositivos'
+  | 'cable-invalido'
+  | 'payload-demasiado-grande';
+
 export type Result<T> =
   | { ok: true; value: T }
   | { ok: false; error: string; code: DomainMessageCode; params?: MessageParams };

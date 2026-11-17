@@ -338,7 +338,11 @@ function defaultName(lab: Lab, kind: DeviceKind): string {
   return `${label}-${n}`;
 }
 
-function macFor(seq: number): string {
+/**
+ * The factory MAC of the device created with `seq` (S61). The case payload does not carry
+ * MACs, so the import derives them from the rebuilt counter instead of storing them.
+ */
+export function macFor(seq: number): string {
   const hex = (value: number) => value.toString(16).toUpperCase().padStart(2, '0');
   return `02:00:5E:${hex((seq >> 16) & 0xff)}:${hex((seq >> 8) & 0xff)}:${hex(seq & 0xff)}`;
 }

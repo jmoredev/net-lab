@@ -1,4 +1,4 @@
-import type { DomainMessageCode } from '../domain/types';
+import type { CaseMessageCode, DomainMessageCode } from '../domain/types';
 import type { UiKey } from './types';
 
 /**
@@ -6,7 +6,7 @@ import type { UiKey } from './types';
  * a dictionary with a key missing — and it is written as English, not as a word-by-word
  * copy of the Spanish sentence: the student reads the same idea, not the same syntax (S42).
  */
-export const EN: Record<UiKey | DomainMessageCode, string> = {
+export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   // Shell
   'app.title': 'Net-Lab — network lab',
   'header.loadExample': 'Load example',
@@ -152,4 +152,12 @@ export const EN: Record<UiKey | DomainMessageCode, string> = {
   'invalid-client-ipv4': 'Type a valid IPv4 address, for example 192.168.1.20.',
   'invalid-gateway': 'Type a valid gateway, for example 192.168.1.1.',
   'address-not-assignable': 'This device has no IP address.',
+
+  // Case import and export (S57)
+  'formato-invalido': 'The link does not contain a valid case. Check that you copied it in full.',
+  'version-no-soportada': 'This case was created with another version of Net-Lab ({v}). This version cannot open it.',
+  'esquema-invalido': 'The case is missing a value or has one Net-Lab does not accept: {campo}.',
+  'demasiados-dispositivos': 'The case has {n} devices and the maximum is 20.',
+  'cable-invalido': 'There is a cable that cannot be connected: {detalle}',
+  'payload-demasiado-grande': 'The link is too long to open ({n} characters, maximum {max}).',
 };
