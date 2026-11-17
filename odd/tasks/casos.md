@@ -416,3 +416,11 @@ La mitad visible: la paleta desactiva sus botones al llegar a `MAX_DEVICES` y lo
 Límite conocido: que la paleta desactive los botones no tiene test de DOM (serían veinte clics por test); lo que sí está probado es el código del fallo y su texto. La guardia de verdad es la del dominio.
 
 Verificación: `tsc` limpio y **267 tests en verde** en 19 archivos.
+
+**L7 — La revisión nativa encontró una asimetría real, y ahora está fijada.**
+
+El revisor de resiliencia del tramo de dominio levantó R4-001 como crítico: `parseLab` confía en `validateLab`, que no aplica los topes de S47, mientras `encodeCase` sí los aplica, así que un laboratorio guardado con más de 20 dispositivos se vería pero no se podría exportar, contra S49. La autoridad lo admitió con `unknown_causality` (`unverified_location`: el renglón citado no era donde viviría el defecto) y la revisión escaló en lugar de aprobar. Comprobado en el código: los otros dos estados del hallazgo no son alcanzables — `renameDevice` ya rechaza el nombre vacío y el de 41 caracteres desde antes de esta feature, y la paleta ya rechaza el dispositivo 21 (D29) —, así que lo único alcanzable es un laboratorio guardado por un build sin tope.
+
+La asimetría se sostiene y es la decisión correcta, porque las dos alternativas son peores: forzar el tope al cargar tiraría el trabajo del alumno, y sacarlo del codificador produciría un caso que la importación rechaza. `src/ui/__tests__/storage.test.ts` fija los tres pasos: carga, el codificador lo rechaza con `demasiados-dispositivos` y `{ n: 21 }`, y vuelve a exportarse apenas sobra un dispositivo.
+
+Verificación: `tsc` limpio y **268 tests en verde** en 19 archivos.
