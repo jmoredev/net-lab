@@ -224,6 +224,7 @@ const codes: Record<DomainMessageCode, true> = {
   'ip-outside-subnet': true,
   'name-empty': true,
   'name-taken': true,
+  'name-too-long': true,
   'no-ethernet': true,
   'no-lease': true,
   'no-router-yet': true,
@@ -239,6 +240,7 @@ const codes: Record<DomainMessageCode, true> = {
   'router-no-wan-address': true,
   'router-wifi-off': true,
   'self-connection': true,
+  'too-many-devices': true,
   'wan-not-router': true,
   'wan-only-internet': true,
   'wifi-disabled': true,
@@ -248,7 +250,7 @@ describe('domain messages: the code catalogue', () => {
   it('lists every code once and keeps them kebab-case', () => {
     const listed = Object.keys(codes);
     // A key written twice in the literal collapses silently, so the count is explicit.
-    expect(listed).toHaveLength(37);
+    expect(listed).toHaveLength(39);
     expect(listed.every((code) => /^[a-z0-9]+(-[a-z0-9]+)*$/.test(code))).toBe(true);
   });
 });

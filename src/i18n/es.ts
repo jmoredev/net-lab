@@ -132,6 +132,8 @@ export const ES: Record<UiKey | DomainMessageCode, string> = {
   'name-empty': 'El nombre no puede estar vacío.',
   'device-missing': 'Ese dispositivo ya no existe.',
   'name-taken': 'Ya hay un dispositivo llamado {name}.',
+  'name-too-long': 'El nombre no puede superar los {max} caracteres.',
+  'too-many-devices': 'Un laboratorio no puede tener más de {max} dispositivos.',
   'internet-not-deletable': 'El nodo Internet no se puede eliminar.',
   'self-connection': 'Un dispositivo no se puede conectar a sí mismo.',
   'phone-no-cable': 'Un móvil no admite cable: solo se conecta por WiFi.',

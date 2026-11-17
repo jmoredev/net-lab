@@ -3,6 +3,8 @@ import {
   CAPABILITIES,
   fail,
   ok,
+  MAX_DEVICES,
+  MAX_NAME_LENGTH,
   type AddressingMode,
   type Device,
   type DeviceKind,
@@ -71,6 +73,11 @@ export function availablePorts(lab: Lab, deviceId: string): string[] {
 export function addDevice(lab: Lab, kind: DeviceKind, position: Point): Result<Lab> {
   if (kind === 'internet') return fail('internet-not-addable', 'El nodo Internet no se puede añadir.');
   if (kind === 'router' && lab.router) return fail('router-already-exists', 'Ya hay un router en el laboratorio.');
+  if (userDeviceCount(lab) >= MAX_DEVICES) {
+    return fail('too-many-devices', `Un laboratorio no puede tener más de ${MAX_DEVICES} dispositivos.`, {
+      max: MAX_DEVICES,
+    });
+  }
 
   const seq = lab.seq;
   const device: Device = {
@@ -110,6 +117,11 @@ export function addDevice(lab: Lab, kind: DeviceKind, position: Point): Result<L
 export function renameDevice(lab: Lab, deviceId: string, rawName: string): Result<Lab> {
   const name = rawName.trim();
   if (!name) return fail('name-empty', 'El nombre no puede estar vacío.');
+  if (name.length > MAX_NAME_LENGTH) {
+    return fail('name-too-long', `El nombre no puede superar los ${MAX_NAME_LENGTH} caracteres.`, {
+      max: MAX_NAME_LENGTH,
+    });
+  }
   const device = getDevice(lab, deviceId);
   if (!device) return fail('device-missing', 'Ese dispositivo ya no existe.');
   const taken = lab.devices.some(
@@ -320,6 +332,10 @@ function macFor(seq: number): string {
 
 function portsOfKind(kind: DeviceKind): string[] {
   return CAPABILITIES[kind].ports;
+}
+
+function userDeviceCount(lab: Lab): number {
+  return lab.devices.filter((device) => device.kind !== 'internet').length;
 }
 
 function replaceDevice(lab: Lab, deviceId: string, device: Device): Lab {

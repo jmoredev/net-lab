@@ -73,7 +73,9 @@ export type DiagnosticMessageCode =
 export type ValidationMessageCode =
   | 'internet-not-addable'
   | 'router-already-exists'
+  | 'too-many-devices'
   | 'name-empty'
+  | 'name-too-long'
   | 'device-missing'
   | 'name-taken'
   | 'internet-not-deletable'
@@ -129,3 +131,12 @@ export const CAPABILITIES: Record<DeviceKind, Capabilities> = {
   phone: { ports: [], wifi: true, addressable: true, label: 'Smartphone' },
   internet: { ports: ['wan'], wifi: false, addressable: false, label: 'Internet' },
 };
+
+/**
+ * Upper bound of user devices (S47, D29). The Internet node is always there and is not
+ * counted, so this number means the same as the one in a case payload.
+ */
+export const MAX_DEVICES = 20;
+
+/** Upper bound of a device name (S47), so every lab the app can build can also be exported. */
+export const MAX_NAME_LENGTH = 40;

@@ -142,6 +142,28 @@ describe('storage: discarded data (S31)', () => {
   });
 });
 
+describe('storage: the shared validator rejects what the old one let through (D30)', () => {
+  it('discards a lab with the same port wired twice', () => {
+    const lab = sampleLab();
+    const links = [...lab.links, { ...lab.links[0], id: 'l90' }];
+    expect(parseJson({ version: 1, lab: { ...lab, links } })).toBeNull();
+  });
+
+  it('discards a lab with an address that is not an IPv4', () => {
+    const lab = sampleLab();
+    const devices = lab.devices.map((device, index) =>
+      index === 2 ? { ...device, manualIp: '192.168.1' } : device,
+    );
+    expect(parseJson({ version: 1, lab: { ...lab, devices } })).toBeNull();
+  });
+
+  it('discards a lab with two routers', () => {
+    const lab = sampleLab();
+    const devices = [...lab.devices, { ...lab.devices[1], id: 'd90', name: 'Router 2' }];
+    expect(parseJson({ version: 1, lab: { ...lab, devices } })).toBeNull();
+  });
+});
+
 describe('storage: a browser with storage disabled never breaks the lab', () => {
   it('does not propagate an exception from setItem', () => {
     expect(() => saveLab(sampleLab(), new BrokenStorage())).not.toThrow();
