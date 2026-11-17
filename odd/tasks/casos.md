@@ -155,7 +155,7 @@ Note que el índice `0` es el primer dispositivo de `dispositivos` (el router) y
 | T2 | Codec y construcción del laboratorio: sobre versionado, base64url UTF-8, límites medidos antes de `atob`, los seis códigos, ids y `seq` deterministas e Internet implícito | S43–S48, S57, S59, S61 | worker | `6370bf2`, `e56511c` |
 | T3 | *(absorbida por T2)* Separarla exigiría validar cables sin el laboratorio armado, que es exactamente la lógica de puertos que no se quiere tener dos veces | S45, S46, S61 | — | — |
 | T4 | Tope de 20 dispositivos en la paleta, con su mensaje y sus tests | S47, D29 | inline | `10830e2` |
-| T5 | Panel del caso, persistido en `net-lab:caso:v1` | S45, D32 | worker | — |
+| T5 | Panel del caso, persistido en `net-lab:caso:v1` | S45, D32 | inline | `8441106` |
 | T6 | Diálogo de exportación: enlace, `.json`, portapapeles con fallback | S49, S50, S51, S52 | worker | — |
 | T7 | Diálogo de importación: campo, fichero, confirmación, errores | S53, S54, S55, S56 | worker | — |
 | T8 | Arranque con `#c=` y limpieza del fragmento | S58, D31 | worker | — |
@@ -416,3 +416,11 @@ La mitad visible: la paleta desactiva sus botones al llegar a `MAX_DEVICES` y lo
 Límite conocido: que la paleta desactive los botones no tiene test de DOM (serían veinte clics por test); lo que sí está probado es el código del fallo y su texto. La guardia de verdad es la del dominio.
 
 Verificación: `tsc` limpio y **267 tests en verde** en 19 archivos.
+
+**L7 — T5 entregada (`8441106`).** El caso tiene su propia clave, `net-lab:caso:v1`, con su propio sobre y su propia versión: vaciar el laboratorio no puede llevarse el enunciado, igual que no resetea el idioma. `parseCase` no valida por su cuenta: reutiliza `readCaseMeta`, el mismo lector que usa un payload, así que un caso guardado y uno importado no pueden discrepar sobre qué es un caso.
+
+La persistencia vive en un hook, `useStoredCase`, y no en `labReducer`, a propósito: el laboratorio es lo que el alumno edita, el caso es lo que mandó el docente, y un F5 tiene que conservar los dos. El panel muestra los tres campos como texto —React escapa, así que una consigna con `<b>` se ve tal cual, que es lo que S45 pide— y dice «caso sin título» cuando no lo tiene.
+
+Estado honesto: hoy **nada** asigna el caso, así que el panel está cableado y oculto. Lo encienden el diálogo de exportación (T6) y la importación (T7). Quince tests nuevos: ida y vuelta del almacenamiento con sus fixtures rechazados, el hook sobreviviendo a un montaje nuevo y borrando sin tocar la clave del laboratorio, y el panel mostrando una consigna con pinta de marcado como texto plano.
+
+Verificación: `tsc` limpio y **282 tests en verde** en 21 archivos. `assess` lo clasificó como riesgo medio sin revisión nativa ni verificador independiente: autoverificación.
