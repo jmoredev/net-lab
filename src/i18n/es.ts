@@ -18,9 +18,25 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'case.untitled': 'Caso sin título',
   'case.by': 'Por {author}',
   'header.clearLab': 'Vaciar laboratorio',
+  'header.shareCase': 'Compartir caso',
   'banner.dismiss': 'Descartar',
   'confirm.loadExample': '¿Seguro que quieres cargar el ejemplo? Se quitarán todos los dispositivos y sus cables.',
   'confirm.clearLab': '¿Seguro que quieres vaciar el laboratorio? Se quitarán todos los dispositivos y sus cables.',
+
+  // Export dialog (S50–S52)
+  'export.title': 'Compartir el caso',
+  'export.hint':
+    'Copia el enlace o descarga el fichero. Los tres campos son opcionales: si los dejas vacíos, se comparte solo el laboratorio.',
+  'export.fieldTitle': 'Título',
+  'export.fieldBrief': 'Consigna',
+  'export.fieldAuthor': 'Autor',
+  'export.linkLabel': 'Enlace del caso',
+  'export.actionCopy': 'Copiar enlace',
+  'export.actionDownload': 'Descargar .json',
+  'export.copied': 'Enlace copiado.',
+  'export.copyManual': 'No se pudo copiar solo. El enlace está seleccionado: pulsa Ctrl+C.',
+  'export.downloaded': 'Descarga iniciada: {file}',
+  'export.close': 'Cerrar',
 
   // Language switcher (S36)
   'lang.switcher': 'Idioma',

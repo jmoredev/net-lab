@@ -7,6 +7,7 @@ import { LanguageProvider, useI18n } from './i18n/LanguageProvider';
 import { resolveStoredMessage } from './i18n';
 import type { Travel } from './ui/animation';
 import { CasePanel } from './ui/components/CasePanel';
+import { ExportDialog } from './ui/components/ExportDialog';
 import { DevicePalette } from './ui/components/DevicePalette';
 import { DevicePanel, type SendProblem } from './ui/components/DevicePanel';
 import { LabCanvas } from './ui/components/LabCanvas';
@@ -40,7 +41,9 @@ function NetLab() {
   const [state, dispatch] = useReducer(labReducer, null, initialState);
   const [travel, setTravel] = useState<Travel | null>(null);
   /** The brief the case carries, if any: it has its own key and survives a reload (D32). */
-  const [caseMeta] = useStoredCase();
+  const [caseMeta, setCaseMeta] = useStoredCase();
+  /** The export dialog of S50 is open: a native `<dialog>`, so no library and no portal (S63). */
+  const [exportOpen, setExportOpen] = useState(false);
   /** Device being dragged on the canvas: the palette turns into the trash zone (S11). */
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const statuses = useMemo(() => computeStatus(state.lab), [state.lab]);
@@ -106,6 +109,14 @@ function NetLab() {
           <button type="button" className="button" disabled={busy} onClick={resetLab}>
             {t('header.clearLab')}
           </button>
+          <button
+            type="button"
+            className="button"
+            disabled={busy}
+            onClick={() => setExportOpen(true)}
+          >
+            {t('header.shareCase')}
+          </button>
           <LanguageSwitch />
         </div>
       </header>
@@ -130,6 +141,16 @@ function NetLab() {
       ) : null}
 
       {caseMeta === null ? null : <CasePanel meta={caseMeta} />}
+
+      {/* Sharing the case is what fills the panel above: the case it reports back is stored
+          and shown (D32, T5) and comes back prefilled the next time the dialog opens. */}
+      <ExportDialog
+        open={exportOpen}
+        lab={state.lab}
+        initialMeta={caseMeta}
+        onClose={() => setExportOpen(false)}
+        onExported={setCaseMeta}
+      />
 
       <div className="app__body">
         <DevicePalette state={state} dispatch={dispatch} busy={busy} draggingId={draggingId} />
