@@ -28,6 +28,7 @@ import {
   MAX_CASE_AUTHOR,
   MAX_CASE_BRIEF,
   MAX_CASE_BYTES,
+  MAX_CASE_DOCUMENT_TEXT,
   MAX_CASE_TEXT,
   MAX_CASE_TITLE,
   decodeCase,
@@ -36,7 +37,7 @@ import {
   type CaseFailure,
   type CaseMeta,
 } from '../case';
-import type { Device, Link, RouterSettings } from '../types';
+import { MAX_NAME_LENGTH, type Device, type Link, type RouterSettings } from '../types';
 
 /* ------------------------------------------------------------------------------------
  * Fixtures and helpers
@@ -129,6 +130,50 @@ const LAPTOP_NAME_NFD = 'Porta\u0301til de Nun\u0303o';
 function renameLaptop(lab: Lab, name: string): Lab {
   return unwrap(renameDevice(lab, lab.devices[1].id, name));
 }
+
+/** Three-byte characters: the payload is measured in UTF-8 bytes, not in characters (S47). */
+const WIDE = '好'.repeat(MAX_NAME_LENGTH);
+
+/**
+ * The biggest lab a legal payload can carry: twenty devices, every name at its forty-character
+ * cap, every switch port cabled and the case at its own limits. Its compact payload stays under
+ * `MAX_CASE_BYTES`, and its indented document does not — the band where a legal lab used to be
+ * refused an export altogether (S49, S50).
+ */
+function biggestLab(): Lab {
+  const name = (prefix: string): string => (prefix + WIDE).slice(0, MAX_NAME_LENGTH);
+
+  let lab = unwrap(addDevice(createLab(), 'router', { x: 0, y: 0 }));
+  lab = unwrap(renameDevice(lab, lab.devices[1].id, name('Router')));
+
+  const switches: string[] = [];
+  for (let index = 0; index < 19; index += 1) {
+    lab = unwrap(addDevice(lab, 'switch', { x: index, y: index }));
+    const id = lab.devices[lab.devices.length - 1].id;
+    lab = unwrap(renameDevice(lab, id, name(`s${index}`)));
+    switches.push(id);
+  }
+
+  // The router's four LAN ports plus every switch port, paired off across devices: seventy-eight
+  // cables, which is every end this lab has (S47 puts no ceiling of its own on cables).
+  const ends: { deviceId: string; portId: string }[] = [
+    ...['lan1', 'lan2', 'lan3', 'lan4'].map((portId) => ({ deviceId: lab.devices[1].id, portId })),
+    ...switches.flatMap((deviceId) =>
+      ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'].map((portId) => ({ deviceId, portId })),
+    ),
+  ];
+  const half = ends.length / 2;
+  for (let index = 0; index < half; index += 1) {
+    lab = unwrap(connectCable(lab, ends[index], ends[index + half]));
+  }
+  return lab;
+}
+
+const biggestMeta: CaseMeta = {
+  titulo: '好'.repeat(MAX_CASE_TITLE),
+  consigna: '好'.repeat(MAX_CASE_BRIEF),
+  autor: '好'.repeat(MAX_CASE_AUTHOR),
+};
 
 const META: CaseMeta = {
   titulo: 'La red no reparte direcciones',
@@ -597,6 +642,57 @@ describe('case codec: the limits', () => {
       autor: 'x'.repeat(MAX_CASE_AUTHOR),
     };
     expect(decodeCase(encode({ meta: atLimit, lab: createLab() })).ok).toBe(true);
+  });
+});
+
+/* ------------------------------------------------------------------------------------
+ * 7b. The document is capped on its own (S49, S50, S47)
+ * ---------------------------------------------------------------------------------- */
+
+describe('case codec: the indented document', () => {
+  it('exports a lab whose document passes the byte cap of its payload, and reads it back', () => {
+    const value: CaseData = { meta: biggestMeta, lab: biggestLab() };
+    const result = encodeCase(value);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // The link keeps its two caps (S47); what grows is the rendering of the payload, not the payload.
+    expect(result.payload.length).toBeLessThanOrEqual(MAX_CASE_TEXT);
+    const compactBytes = new TextEncoder().encode(JSON.stringify(readPayload(result.payload))).length;
+    const documentBytes = new TextEncoder().encode(result.json).length;
+    expect(compactBytes).toBeLessThanOrEqual(MAX_CASE_BYTES);
+    expect(documentBytes).toBeGreaterThan(MAX_CASE_BYTES);
+    expect(documentBytes).toBeLessThanOrEqual(MAX_CASE_DOCUMENT_TEXT);
+
+    // The downloaded `.json` is one of the four shapes an import accepts, and it is lossless.
+    expect(decode(result.json)).toEqual(value);
+  });
+
+  it('keeps refusing a payload of that shape once its bytes pass MAX_CASE_BYTES', () => {
+    const payload = readPayload(encode({ meta: biggestMeta, lab: biggestLab() }));
+    payload.lab.dispositivos[1].n = 'x'.repeat(9_000);
+    const code = payloadFor(payload);
+    // The character cap of a link does not fire first: this is the byte cap, measured after base64.
+    expect(code.length).toBeLessThanOrEqual(MAX_CASE_TEXT);
+
+    const failure = failureOf(code);
+    expect(failure.code).toBe('payload-demasiado-grande');
+    expect(failure.params?.max).toBe(MAX_CASE_BYTES);
+    expect(Number(failure.params?.n)).toBeGreaterThan(MAX_CASE_BYTES);
+  });
+
+  it('rejects a pasted document past the document cap, with the existing code', () => {
+    // Three-byte characters: the document passes the character cap of a link and only its UTF-8
+    // bytes pass the document cap, so what fires here is the size check and not the other one.
+    const document = `{${'好'.repeat(20_000)}}`;
+    expect(document.length).toBeLessThanOrEqual(MAX_CASE_TEXT);
+
+    const failure = failureOf(document);
+    expect(failure.code).toBe('payload-demasiado-grande');
+    expect(failure.params).toEqual({
+      n: new TextEncoder().encode(document).length,
+      max: MAX_CASE_DOCUMENT_TEXT,
+    });
   });
 });
 

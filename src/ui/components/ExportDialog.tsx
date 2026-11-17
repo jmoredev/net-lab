@@ -58,6 +58,9 @@ export function ExportDialog({ open, lab, initialMeta, onClose, onExported }: Ex
     const dialog = dialogRef.current;
     if (dialog === null) return;
 
+    // A stamp is about the link that was on screen; reopening never shows a stale one (S52).
+    setStatus(null);
+
     if (typeof dialog.showModal === 'function') {
       if (!dialog.open) dialog.showModal();
     } else {
@@ -69,6 +72,15 @@ export function ExportDialog({ open, lab, initialMeta, onClose, onExported }: Ex
   /** The case as the payload will carry it: three empty fields mean no case at all (S51). */
   const meta: CaseMeta | null = hasContent(fields) ? fields : null;
   const encoded = useMemo(() => encodeCase({ meta, lab }), [meta, lab]);
+
+  /**
+   * Editing a field invalidates the last status: the link on screen is no longer the one that was
+   * copied or downloaded, so the stamp would describe something that is not in the clipboard (S52).
+   */
+  function edit(field: keyof CaseMeta, value: string): void {
+    setFields((current) => ({ ...current, [field]: value }));
+    setStatus(null);
+  }
 
   // Same origin and path the app is served from, never a hardcoded base (S43, S50).
   const base = useMemo<{ origin: string; pathname: string }>(
@@ -134,7 +146,7 @@ export function ExportDialog({ open, lab, initialMeta, onClose, onExported }: Ex
             type="text"
             maxLength={MAX_CASE_TITLE}
             value={fields.titulo}
-            onChange={(event) => setFields({ ...fields, titulo: event.target.value })}
+            onChange={(event) => edit('titulo', event.target.value)}
           />
         </label>
 
@@ -146,7 +158,7 @@ export function ExportDialog({ open, lab, initialMeta, onClose, onExported }: Ex
             type="text"
             maxLength={MAX_CASE_BRIEF}
             value={fields.consigna}
-            onChange={(event) => setFields({ ...fields, consigna: event.target.value })}
+            onChange={(event) => edit('consigna', event.target.value)}
           />
         </label>
 
@@ -158,7 +170,7 @@ export function ExportDialog({ open, lab, initialMeta, onClose, onExported }: Ex
             type="text"
             maxLength={MAX_CASE_AUTHOR}
             value={fields.autor}
-            onChange={(event) => setFields({ ...fields, autor: event.target.value })}
+            onChange={(event) => edit('autor', event.target.value)}
           />
         </label>
       </div>

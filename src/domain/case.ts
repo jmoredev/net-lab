@@ -56,6 +56,16 @@ export const MAX_CASE_TEXT = 24_000;
 /** Cap of the decoded payload in UTF-8 bytes (S47). */
 export const MAX_CASE_BYTES = 16_384;
 
+/**
+ * Cap of the indented `.json` document in UTF-8 bytes (S50, S53).
+ *
+ * The document is a pretty-printed rendering of a payload that is already capped by
+ * `MAX_CASE_BYTES`, and pretty JSON is always bigger than the compact form, so its ceiling is
+ * proportional — twice the link text — instead of the payload's own. A legal lab must always be
+ * importable from the file it just downloaded, whatever the rendering costs (S49, S50).
+ */
+export const MAX_CASE_DOCUMENT_TEXT = 2 * MAX_CASE_TEXT;
+
 export const MAX_CASE_TITLE = 80;
 export const MAX_CASE_BRIEF = 500;
 export const MAX_CASE_AUTHOR = 60;
@@ -147,9 +157,6 @@ export function encodeCase(value: CaseData): EncodeResult {
 
   if (payload.length > MAX_CASE_TEXT) return tooLarge(payload.length, MAX_CASE_TEXT);
   if (compact.length > MAX_CASE_BYTES) return tooLarge(compact.length, MAX_CASE_BYTES);
-  // The file has to be importable too, and a downloaded document is read as text.
-  const fileBytes = new TextEncoder().encode(json).length;
-  if (fileBytes > MAX_CASE_BYTES) return tooLarge(fileBytes, MAX_CASE_BYTES);
 
   return { ok: true, payload, json };
 }
@@ -243,7 +250,7 @@ export function decodeCase(text: string): DecodeResult {
   // A downloaded `.json` is a document, not a code: it goes straight to the reader (S50, R6).
   if (code.startsWith('{')) {
     const bytes = new TextEncoder().encode(code).length;
-    if (bytes > MAX_CASE_BYTES) return tooLarge(bytes, MAX_CASE_BYTES);
+    if (bytes > MAX_CASE_DOCUMENT_TEXT) return tooLarge(bytes, MAX_CASE_DOCUMENT_TEXT);
 
     let document: unknown;
     try {

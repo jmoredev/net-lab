@@ -108,7 +108,9 @@ describe('case: the downloaded document is a case too (S50, R6)', () => {
   it('refuses a document that is not JSON, or too big to be one', () => {
     expect(decodeCase('{ this is not json').ok).toBe(false);
 
-    const huge = `{"v":1,"lab":{"dispositivos":[],"cables":[]},"x":"${'a'.repeat(17000)}"}`;
+    // 17 000 characters stay under the 24 000 character cap, and three-byte characters put the
+    // document past MAX_CASE_DOCUMENT_TEXT, so this case still pins the document byte cap (S50).
+    const huge = `{"v":1,"lab":{"dispositivos":[],"cables":[]},"x":"${'好'.repeat(17000)}"}`;
     const result = decodeCase(huge);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.failure.code).toBe('payload-demasiado-grande');
