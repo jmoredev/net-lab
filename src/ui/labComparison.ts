@@ -1,5 +1,5 @@
 import { createExampleLab } from '../domain/example';
-import type { Lab } from '../domain/types';
+import type { Device, Lab, PortRef } from '../domain/types';
 
 /**
  * What the import dialog has to know about the lab on screen before replacing it (S55): is
@@ -33,24 +33,53 @@ export function needsReplaceConfirmation(lab: Lab): boolean {
  * Only what the student can see decides this comparison. `id`, `mac` and `seq` are bookkeeping —
  * an imported case rebuilds them deterministically, so a case made from the example's own export
  * would otherwise stop being "the example" and a second import would ask a pointless question.
- * Cables compare by device index, which is what a cable is once the ids stop mattering.
+ *
+ * Nothing here may depend on how the lab was assembled: `JSON.stringify` keeps the insertion
+ * order of the keys, and the reducer, the storage and the codec do not agree on it, so every
+ * object is written with its keys sorted. A cable compares by what it connects — the visible
+ * identity of each device, not the position the array happens to give it — and neither the
+ * order of the array nor the direction of a cable changes the answer.
  */
 function canonical(lab: Lab): string {
-  const index = new Map(lab.devices.map((device, position) => [device.id, position]));
+  const deviceKey = new Map(
+    lab.devices.map((device) => [device.id, JSON.stringify(sorted(visible(device)))]),
+  );
+  const deviceOf = (id: string): string => deviceKey.get(id) ?? id;
+  const port = (ref: PortRef): string => JSON.stringify([deviceOf(ref.deviceId), ref.portId]);
 
-  return JSON.stringify({
-    devices: lab.devices.map(({ id: _id, mac: _mac, ...visible }) => visible),
-    router:
-      lab.router === null
-        ? null
-        : { ...lab.router, deviceId: index.get(lab.router.deviceId) ?? lab.router.deviceId },
-    links: lab.links.map((link) => [
-      index.get(link.a.deviceId) ?? link.a.deviceId,
-      link.a.portId,
-      index.get(link.b.deviceId) ?? link.b.deviceId,
-      link.b.portId,
-    ]),
-  });
+  const links = lab.links
+    .map((link) => JSON.stringify([port(link.a), port(link.b)].sort()))
+    .sort();
+
+  return JSON.stringify(
+    sorted({
+      devices: [...deviceKey.values()].sort(),
+      router:
+        lab.router === null
+          ? null
+          : { ...lab.router, deviceId: deviceOf(lab.router.deviceId) },
+      links,
+    }),
+  );
+}
+
+/** A device as the student sees it: `id` and `mac` are bookkeeping, not part of the scene. */
+function visible(device: Device): Record<string, unknown> {
+  const { id: _id, mac: _mac, ...rest } = device;
+  return rest as Record<string, unknown>;
+}
+
+/** A copy with every object key in alphabetical order, recursively. Arrays keep their order. */
+function sorted(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sorted);
+  if (value === null || typeof value !== 'object') return value;
+
+  const record = value as Record<string, unknown>;
+  return Object.fromEntries(
+    Object.keys(record)
+      .sort()
+      .map((key) => [key, sorted(record[key])]),
+  );
 }
 
 /** The example is deterministic, so its canonical form is built once and reused. */

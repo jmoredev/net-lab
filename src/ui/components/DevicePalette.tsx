@@ -21,7 +21,8 @@ export function DevicePalette({ state, dispatch, busy, draggingId }: DevicePalet
   const { t, lang } = useI18n();
   const routerTaken = state.lab.router !== null;
   // The Internet node never counts: the cap is the same one a case payload can carry (D29).
-  const full = state.lab.devices.filter((device) => device.kind !== 'internet').length >= MAX_DEVICES;
+  const userDevices = state.lab.devices.filter((device) => device.kind !== 'internet').length;
+  const full = userDevices >= MAX_DEVICES;
   const trash = draggingId !== null;
 
   return (
@@ -57,7 +58,7 @@ export function DevicePalette({ state, dispatch, busy, draggingId }: DevicePalet
           );
         })}
       </ul>
-      {full ? <p className="palette__note">{t('palette.full', { max: MAX_DEVICES })}</p> : null}
+      {full ? <p className="palette__note">{t('palette.full', { max: userDevices })}</p> : null}
       {routerTaken ? <p className="palette__note">{t('palette.routerTaken')}</p> : null}
       {trash ? (
         <p className="palette__hint palette__hint--trash">{t('palette.trashHint')}</p>

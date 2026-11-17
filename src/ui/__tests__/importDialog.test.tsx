@@ -7,7 +7,7 @@
  * situation the export dialog is tested in. `File.text()` does exist, which is what the file
  * path needs; the clipboard and the download are not part of this dialog.
  */
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App';
@@ -56,6 +56,26 @@ function renderDialog(lab: Lab, onImport = vi.fn(), onClose = vi.fn()) {
     </LanguageProvider>,
   );
   return { onImport, onClose };
+}
+
+/** The same dialog with `open` under the test's control, so it can be closed and reopened. */
+function renderOpenable(lab: Lab, onImport = vi.fn(), onClose = vi.fn()) {
+  const view = (open: boolean) => (
+    <LanguageProvider>
+      <ImportDialog open={open} lab={lab} onClose={onClose} onImport={onImport} />
+    </LanguageProvider>
+  );
+  const result = render(view(true));
+  return { onImport, onClose, setOpen: (open: boolean) => result.rerender(view(open)) };
+}
+
+/** A promise the test resolves by hand, to hold a file read in flight (S54). */
+function deferred(): { promise: Promise<string>; resolve: (text: string) => void } {
+  let resolve: (text: string) => void = () => {};
+  const promise = new Promise<string>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
 }
 
 /** The one field of S53: link, code or document, pasted or typed. */
@@ -367,6 +387,21 @@ describe('ImportDialog: a file is the same string and the same analyser (S54)', 
     expect(onImport.mock.calls[0][0].meta).toEqual(meta);
   });
 
+  it('imports a .txt whose link ends with a newline, exactly like the same text pasted', async () => {
+    const user = userEvent.setup();
+    const { onImport } = renderDialog(createLab());
+    const file = new File([`https://jmoredev.github.io/net-lab/#c=${encoded.payload}\n`], 'caso.txt', {
+      type: 'text/plain',
+    });
+
+    fireEvent.change(fileInput(), { target: { files: [file] } });
+    await user.click(screen.getByRole('button', { name: 'Abrir' }));
+
+    // The field trims what a chat adds; a file is the same string and has to be trimmed too.
+    await waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
+    expect(onImport.mock.calls[0][0].meta).toEqual(meta);
+  });
+
   it('refuses a file over the guard without reading it', async () => {
     const user = userEvent.setup();
     const { onImport } = renderDialog(createLab());
@@ -464,6 +499,135 @@ describe('ImportDialog: the dialog itself (S63)', () => {
     await waitFor(() => expect(statusText()).toBe(`Caso abierto: ${meta.titulo}`));
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+});
+
+describe('ImportDialog: the same file can be chosen again (S54)', () => {
+  it('clears the hidden input after a rejected file, so that path is pickable again', async () => {
+    const user = userEvent.setup();
+    const { onImport } = renderDialog(createLab());
+    const input = fileInput();
+    // A browser keeps the chosen path in the input and fires no `change` for the same path again.
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      writable: true,
+      value: 'C:\\fakepath\\caso.json',
+    });
+
+    const rejected = new File([futureVersion], 'caso.json', { type: 'application/json' });
+    fireEvent.change(input, { target: { files: [rejected] } });
+    await user.click(screen.getByRole('button', { name: 'Abrir' }));
+    await waitFor(() => expect(alertText()).toBe(expectedFailure(futureVersion)));
+
+    expect(fileInput().value).toBe('');
+
+    // Choosable again: the corrected file with the same name now opens the case.
+    const good = new File([encodedExample().json], 'caso.json', { type: 'application/json' });
+    fireEvent.change(fileInput(), { target: { files: [good] } });
+    await user.click(screen.getByRole('button', { name: 'Abrir' }));
+
+    await waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
+  });
+
+  it('clears the hidden input when the field becomes the source', () => {
+    renderDialog(createLab());
+    const input = fileInput();
+    Object.defineProperty(input, 'value', {
+      configurable: true,
+      writable: true,
+      value: 'C:\\fakepath\\caso.json',
+    });
+
+    fireEvent.change(input, {
+      target: { files: [new File([''], 'caso.json', { type: 'application/json' })] },
+    });
+    paste(badCable);
+
+    // Typing drops the file, and the input has to forget the path with it.
+    expect(fileInput().value).toBe('');
+  });
+});
+
+describe('ImportDialog: reopening starts empty (S53, S54)', () => {
+  it('forgets the pasted text and the failure when it is reopened', async () => {
+    const user = userEvent.setup();
+    const { setOpen } = renderOpenable(ownLab());
+
+    paste(badCable);
+    await user.click(screen.getByRole('button', { name: 'Abrir' }));
+    await waitFor(() => expect(alertText()).toContain('Hay un cable que no se puede conectar: '));
+
+    setOpen(false);
+    setOpen(true);
+
+    expect(field().value).toBe('');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(statusText()).toBe('');
+  });
+
+  it('forgets the rejected file, which stops being the source', async () => {
+    const user = userEvent.setup();
+    const { setOpen } = renderOpenable(createLab());
+    const broken = new File(['{'], 'roto.json', { type: 'application/json' });
+
+    fireEvent.change(fileInput(), { target: { files: [broken] } });
+    await user.click(screen.getByRole('button', { name: 'Abrir' }));
+    await waitFor(() => expect(alertText()).toBe(translate('es', 'formato-invalido')));
+    expect(statusText()).toBe('roto.json');
+
+    setOpen(false);
+    setOpen(true);
+
+    expect(statusText()).toBe('');
+    // The file no longer waits behind the dialog: Abrir asks for something to open.
+    await user.click(screen.getByRole('button', { name: 'Abrir' }));
+    expect(alertText()).toBe('Pega algo primero.');
+  });
+});
+
+describe('ImportDialog: one import at a time (S54, S56)', () => {
+  it('reads the file once when Abrir is clicked twice while the read is pending', async () => {
+    const encoded = encodedExample();
+    const pending = deferred();
+    const read = vi.fn(() => pending.promise);
+    const file = new File([''], 'caso.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { configurable: true, value: read });
+    const { onImport } = renderDialog(createLab());
+
+    fireEvent.change(fileInput(), { target: { files: [file] } });
+    const open = screen.getByRole('button', { name: 'Abrir' });
+    fireEvent.click(open);
+    fireEvent.click(open);
+
+    // While the read is in flight the action cannot run again.
+    expect((open as HTMLButtonElement).disabled).toBe(true);
+
+    pending.resolve(encoded.json);
+    await waitFor(() => expect(onImport).toHaveBeenCalledTimes(1));
+    expect(read).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(statusText()).toBe(`Caso abierto: ${meta.titulo}`));
+  });
+
+  it('discards a read that arrives after the dialog was closed', async () => {
+    const encoded = encodedExample();
+    const pending = deferred();
+    const file = new File([''], 'caso.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { configurable: true, value: () => pending.promise });
+    const { onImport, setOpen } = renderOpenable(createLab());
+
+    fireEvent.change(fileInput(), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir' }));
+    setOpen(false);
+
+    pending.resolve(encoded.json);
+    await act(async () => {
+      await pending.promise;
+    });
+
+    // A result about a dialog that is no longer on screen is stale: it is thrown away.
+    expect(onImport).not.toHaveBeenCalled();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
 

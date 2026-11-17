@@ -37,7 +37,7 @@ import {
   type CaseFailure,
   type CaseMeta,
 } from '../case';
-import { MAX_NAME_LENGTH, type Device, type Link, type RouterSettings } from '../types';
+import { MAX_DEVICES, MAX_NAME_LENGTH, type Device, type Link, type RouterSettings } from '../types';
 
 /* ------------------------------------------------------------------------------------
  * Fixtures and helpers
@@ -531,7 +531,8 @@ describe('case codec: the six failure codes', () => {
     const failure = failureOf(payloadFor({ v: 1, lab: { dispositivos: devices, cables: [] } }));
 
     expect(failure.code).toBe('demasiados-dispositivos');
-    expect(failure.params).toEqual({ n: 21 });
+    // The cap travels with the failure, so the sentence interpolates it instead of hardcoding 20.
+    expect(failure.params).toEqual({ n: 21, max: MAX_DEVICES });
   });
 
   it('cable-invalido: a cable to a port that does not exist', () => {
@@ -668,6 +669,19 @@ describe('case codec: the indented document', () => {
     expect(decode(result.json)).toEqual(value);
   });
 
+  it('writes the document with newlines and two-space indentation (S50)', () => {
+    const result = encodeCase({ meta: biggestMeta, lab: biggestLab() });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // A `.json` that says nothing when opened is not a document: a regression to compact JSON
+    // (or to four-space indentation) has to fail here and not in a review of a download.
+    expect(result.json).toContain('\n');
+    expect(result.json.startsWith('{\n  "v": 1,')).toBe(true);
+    expect(result.json).toContain('\n  "lab": {');
+    expect(result.json).toBe(JSON.stringify(JSON.parse(result.json), null, 2));
+  });
+
   it('keeps refusing a payload of that shape once its bytes pass MAX_CASE_BYTES', () => {
     const payload = readPayload(encode({ meta: biggestMeta, lab: biggestLab() }));
     payload.lab.dispositivos[1].n = 'x'.repeat(9_000);
@@ -720,10 +734,10 @@ describe('case codec: the six sentences', () => {
     expect(translate('en', 'esquema-invalido', { campo: 'dispositivos[3].n' })).toBe(
       'The case is missing a value or has one Net-Lab does not accept: dispositivos[3].n.',
     );
-    expect(translate('es', 'demasiados-dispositivos', { n: 21 })).toBe(
+    expect(translate('es', 'demasiados-dispositivos', { n: 21, max: MAX_DEVICES })).toBe(
       'El caso tiene 21 dispositivos y el máximo es 20.',
     );
-    expect(translate('en', 'demasiados-dispositivos', { n: 21 })).toBe(
+    expect(translate('en', 'demasiados-dispositivos', { n: 21, max: MAX_DEVICES })).toBe(
       'The case has 21 devices and the maximum is 20.',
     );
     expect(translate('es', 'payload-demasiado-grande', { n: 24_001, max: 24_000 })).toBe(

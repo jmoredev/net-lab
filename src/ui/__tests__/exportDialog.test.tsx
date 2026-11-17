@@ -154,6 +154,20 @@ describe('ExportDialog: copying tells the truth (S52)', () => {
     expect(onExported).toHaveBeenCalledWith(meta);
   });
 
+  it('confirms the copy when only the legacy path could copy (S52)', async () => {
+    const user = userEvent.setup();
+    stubClipboard(() => Promise.reject(new Error('denied')));
+    const execCommand = vi.fn(() => true);
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand });
+    renderDialog(meta);
+
+    await user.click(screen.getByRole('button', { name: 'Copiar enlace' }));
+
+    await waitFor(() => expect(statusText()).toBe('Enlace copiado.'));
+    // The legacy path really copied, so the stamp is the truth and not an assumption.
+    expect(execCommand).toHaveBeenCalledWith('copy');
+  });
+
   it('asks for Ctrl+C when neither path could copy, and leaves the link selected', async () => {
     const user = userEvent.setup();
     stubClipboard(() => Promise.reject(new Error('denied')));
@@ -205,7 +219,29 @@ describe('ExportDialog: the stamp ages with the link (S52)', () => {
   });
 });
 
-describe('ExportDialog: the .json download (S50)', () => {  it('downloads the payload under netlab-<slug>-<stamp>.json and says so', async () => {
+describe('ExportDialog: reopening starts from the case in force (S49, D32)', () => {
+  it('shows the case again after editing a field and reopening', async () => {
+    const user = userEvent.setup();
+    const setOpen = renderOpenable(meta);
+
+    await user.clear(screen.getByLabelText('Título'));
+    await user.type(screen.getByLabelText('Título'), 'Un borrador que no se guarda');
+    expect((screen.getByLabelText('Título') as HTMLInputElement).value).toBe(
+      'Un borrador que no se guarda',
+    );
+
+    setOpen(false);
+    setOpen(true);
+
+    // The draft was never shared, so reopening shows the case in force and not the draft.
+    expect((screen.getByLabelText('Título') as HTMLInputElement).value).toBe(meta.titulo);
+    expect((screen.getByLabelText('Consigna') as HTMLInputElement).value).toBe(meta.consigna);
+    expect((screen.getByLabelText('Autor') as HTMLInputElement).value).toBe(meta.autor);
+  });
+});
+
+describe('ExportDialog: the .json download (S50)', () => {
+  it('downloads the payload under netlab-<slug>-<stamp>.json and says so', async () => {
     const user = userEvent.setup();
     const onExported = vi.fn();
     renderDialog(meta, onExported);
@@ -215,7 +251,11 @@ describe('ExportDialog: the .json download (S50)', () => {  it('downloads the pa
     expect(vi.mocked(downloadText)).toHaveBeenCalledTimes(1);
     const [fileName, text] = vi.mocked(downloadText).mock.calls[0];
     expect(fileName).toMatch(/^netlab-portatil-de-nuno-\d{4}-\d{2}-\d{2}\.json$/);
-    // The same string the link carries: one analyser opens both (S53, S54).
+    // S50: the file is the indented JSON document, not the base64 code the link carries, so
+    // it opens in an editor, can be corrected by hand and still goes back in (S53, S54).
+    expect(text.startsWith('{\n  "v": 1,')).toBe(true);
+    expect(text).toContain('\n  "lab": {');
+    expect(JSON.parse(text)).toMatchObject({ v: 1 });
     expect(decodeCase(text).ok).toBe(true);
     expect(statusText()).toBe(`Descarga iniciada: ${fileName}`);
     expect(onExported).toHaveBeenCalledWith(meta);

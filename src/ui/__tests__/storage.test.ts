@@ -238,7 +238,7 @@ describe('a stored lab from before the cap (S47, D29, S49)', () => {
     expect(refused.ok).toBe(false);
     if (!refused.ok) {
       expect(refused.failure.code).toBe('demasiados-dispositivos');
-      expect(refused.failure.params).toEqual({ n: MAX_DEVICES + 1 });
+      expect(refused.failure.params).toEqual({ n: MAX_DEVICES + 1, max: MAX_DEVICES });
     }
 
     const fitted = { ...lab, devices: lab.devices.filter((device) => device.id !== 'legacy') };

@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { createExampleLab } from '../../domain/example';
 import { addDevice, createLab, deleteDevice, moveDevice, type Lab } from '../../domain/lab';
-import type { Result } from '../../domain/types';
+import type { Device, Result } from '../../domain/types';
 import { hasWork, isExampleLab, needsReplaceConfirmation } from '../labComparison';
 
 function unwrap(result: Result<Lab>): Lab {
@@ -67,6 +67,37 @@ describe('isExampleLab: is this exactly what the app preloads (S55)', () => {
     const example = createExampleLab();
     const laptop = example.devices[2];
     expect(isExampleLab(unwrap(deleteDevice(example, laptop.id)))).toBe(false);
+  });
+});
+
+describe('canonical: the same scene compares equal however it was built (S55)', () => {
+  it('ignores the order of the device array', () => {
+    const example = createExampleLab();
+    // Same devices, same cables, same router: only the position in the array changed, which is
+    // bookkeeping of the reducer and not something the student can see.
+    const reordered: Lab = { ...example, devices: [...example.devices].reverse() };
+
+    expect(isExampleLab(reordered)).toBe(true);
+    expect(needsReplaceConfirmation(reordered)).toBe(false);
+  });
+
+  it('ignores the key order of a device object', () => {
+    const example = createExampleLab();
+    // A lab read back from storage or rebuilt by hand has the same fields in another order.
+    const devices = example.devices.map(
+      (device) =>
+        Object.fromEntries(Object.entries(device).reverse()) as unknown as Device,
+    );
+
+    expect(isExampleLab({ ...example, devices })).toBe(true);
+  });
+
+  it('still sees a real difference when the scene differs', () => {
+    const example = createExampleLab();
+    const devices = [...example.devices];
+    devices[1] = { ...devices[1], ethernetEnabled: !devices[1].ethernetEnabled };
+
+    expect(isExampleLab({ ...example, devices })).toBe(false);
   });
 });
 

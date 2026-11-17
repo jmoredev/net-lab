@@ -311,7 +311,8 @@ function readCase(value: unknown): Read<CaseData> {
   const rawDevices = rawLab.dispositivos;
   if (!Array.isArray(rawDevices)) return invalid('dispositivos');
   if (rawDevices.length > MAX_DEVICES) {
-    return failure('demasiados-dispositivos', { n: rawDevices.length });
+    // The cap travels with the failure so the catalogue interpolates it instead of inventing one (S47, S57).
+    return failure('demasiados-dispositivos', { n: rawDevices.length, max: MAX_DEVICES });
   }
 
   // The Internet node is implicit: it is rebuilt from the domain so it keeps its fixed id

@@ -50,13 +50,38 @@ export function ImportDialog({ open, lab, onClose, onImport }: ImportDialogProps
   const [dragging, setDragging] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [imported, setImported] = useState<Imported | null>(null);
+  /** True while `File.text()` is in flight: a second click must not start a second import. */
+  const [reading, setReading] = useState(false);
+  const readingRef = useRef(false);
+  /** The dialog may close while a read is pending, and then its result is stale (S54). */
+  const openRef = useRef(open);
+
+  /**
+   * The hidden `<input type="file">` keeps its last choice and fires no `change` for the same
+   * path again, so it is cleared whenever the file stops being the source (S54).
+   */
+  function clearFileChoice(): void {
+    if (fileRef.current !== null) fileRef.current.value = '';
+  }
+
+  /** Nothing of the previous visit is about this one: a rejected file must not survive (S54). */
+  function reset(): void {
+    setText('');
+    setFile(null);
+    setProblem(null);
+    setImported(null);
+    clearFileChoice();
+  }
 
   // The modal itself: `showModal()` when the element has it, the attribute when it does not.
   // The component renders nothing while closed, so nothing of it is ever on screen.
   useEffect(() => {
+    openRef.current = open;
     if (!open) return;
     const dialog = dialogRef.current;
     if (dialog === null) return;
+
+    reset();
 
     if (typeof dialog.showModal === 'function') {
       if (!dialog.open) dialog.showModal();
@@ -72,6 +97,7 @@ export function ImportDialog({ open, lab, onClose, onImport }: ImportDialogProps
     setFile(null);
     setProblem(null);
     setImported(null);
+    clearFileChoice();
   }
 
   function acceptFile(picked: File): void {
@@ -83,6 +109,8 @@ export function ImportDialog({ open, lab, onClose, onImport }: ImportDialogProps
 
   /** Reads what the student gave: the file first, the field otherwise (S53, S54). */
   async function submit(): Promise<void> {
+    // Two clicks while a read is pending would import twice: the first one wins (S56).
+    if (readingRef.current) return;
     setProblem(null);
     setImported(null);
 
@@ -93,15 +121,28 @@ export function ImportDialog({ open, lab, onClose, onImport }: ImportDialogProps
         setProblem({ kind: 'failure', failure: tooLarge(file.size) });
         return;
       }
-      let content: string;
+      readingRef.current = true;
+      setReading(true);
+      let content: string | null = null;
       try {
         content = await file.text();
       } catch {
         // A file the browser refuses to read is text this analyser cannot understand.
+        content = null;
+      } finally {
+        readingRef.current = false;
+        setReading(false);
+      }
+      // The file was consumed, whatever the answer: the same path has to be pickable again.
+      clearFileChoice();
+      // Closed while reading: the result is about a dialog that is no longer there.
+      if (!openRef.current) return;
+      if (content === null) {
         setProblem({ kind: 'failure', failure: { code: 'formato-invalido' } });
         return;
       }
-      apply(content);
+      // A file is the same string a paste is, so it is trimmed the same way (S53, S54).
+      apply(content.trim());
       return;
     }
 
@@ -127,7 +168,7 @@ export function ImportDialog({ open, lab, onClose, onImport }: ImportDialogProps
     setText('');
     setFile(null);
     // An `<input type="file">` keeps its last choice, so the same file can be picked again.
-    if (fileRef.current !== null) fileRef.current.value = '';
+    clearFileChoice();
     const title = decoded.data.meta?.titulo ?? '';
     setImported({ title: title.trim() === '' ? null : title });
   }
@@ -188,8 +229,9 @@ export function ImportDialog({ open, lab, onClose, onImport }: ImportDialogProps
         />
       </label>
 
-      {/* The button is the visible door; this input is the one the browser can open. It keeps
-          its last choice, so `apply` clears it after a successful import. */}
+      {/* The button is the visible door; this input is the one the browser can open. Its
+          `value` is cleared whenever the file stops being the source, so the same path can be
+          chosen again and fires `change` (S54). */}
       <input
         ref={fileRef}
         type="file"
@@ -209,7 +251,12 @@ export function ImportDialog({ open, lab, onClose, onImport }: ImportDialogProps
       )}
 
       <div className="dialog__actions">
-        <button type="button" className="button" onClick={() => void submit()}>
+        <button
+          type="button"
+          className="button"
+          disabled={reading}
+          onClick={() => void submit()}
+        >
           {t('import.action')}
         </button>
         <button type="button" className="button" onClick={() => fileRef.current?.click()}>

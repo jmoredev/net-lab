@@ -198,7 +198,7 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'formato-invalido': 'El enlace no contiene un caso válido. Comprueba que lo copiaste completo.',
   'version-no-soportada': 'Este caso se creó con otra versión de Net-Lab ({v}). Esta versión no puede abrirlo.',
   'esquema-invalido': 'Al caso le falta un dato o tiene un valor que Net-Lab no acepta: {campo}.',
-  'demasiados-dispositivos': 'El caso tiene {n} dispositivos y el máximo es 20.',
+  'demasiados-dispositivos': 'El caso tiene {n} dispositivos y el máximo es {max}.',
   'cable-invalido': 'Hay un cable que no se puede conectar: {detalle}',
   'payload-demasiado-grande': 'El enlace es demasiado largo para abrirlo ({n} caracteres, máximo {max}).',
 };
