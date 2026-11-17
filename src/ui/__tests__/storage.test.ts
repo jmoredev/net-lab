@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createExampleLab } from '../../domain/example';
+import { encodeCase } from '../../domain/case';
 import { addDevice, connectCable, createLab, setAddressing, type Lab } from '../../domain/lab';
-import type { Result } from '../../domain/types';
+import { MAX_DEVICES, type Result } from '../../domain/types';
 import { STORAGE_KEY, clearLab, loadLab, parseLab, saveLab, serialize } from '../storage';
 
 const unwrap = <T>(result: Result<T>): T => {
@@ -206,5 +207,41 @@ describe('storage: a browser with storage disabled never breaks the lab', () => 
     clearLab(storage);
     expect(storage.getItem(STORAGE_KEY)).toBeNull();
     expect(loadLab(storage)).toBeNull();
+  });
+});
+
+/**
+ * The cap of S47 is a rule of the payload and of the palette (D29), not of what a stored lab
+ * may hold: `validateLab` leaves it to the codec on purpose, so a lab saved by a build without
+ * the cap keeps loading. The other side of that decision is deliberate too, and this test
+ * pins it: while the lab is over the cap the export refuses, and it becomes shareable again
+ * as soon as it fits. Enforcing the cap while loading would throw away the student's work.
+ */
+describe('a stored lab from before the cap (S47, D29, S49)', () => {
+  /** 20 user devices are the cap; the 21st is what an older build could have saved. */
+  const overCap = (): string => {
+    let lab = unwrap(addDevice(createLab(), 'router', { x: 0, y: 0 }));
+    for (let index = 1; index < MAX_DEVICES; index += 1) {
+      lab = unwrap(addDevice(lab, 'laptop', { x: index, y: index }));
+    }
+    const legacy = { ...lab.devices[2], id: 'legacy', name: 'Laptop-vieja', mac: '02:00:00:00:00:99' };
+    return JSON.stringify({ version: 1, lab: { ...lab, devices: [...lab.devices, legacy] } });
+  };
+
+  it('loads it, refuses to encode it, and encodes it once the extra device is gone', () => {
+    const restored = parseLab(overCap());
+    expect(restored).not.toBeNull();
+    const lab = restored as Lab;
+    expect(lab.devices.some((device) => device.id === 'legacy')).toBe(true);
+
+    const refused = encodeCase({ meta: null, lab });
+    expect(refused.ok).toBe(false);
+    if (!refused.ok) {
+      expect(refused.failure.code).toBe('demasiados-dispositivos');
+      expect(refused.failure.params).toEqual({ n: MAX_DEVICES + 1 });
+    }
+
+    const fitted = { ...lab, devices: lab.devices.filter((device) => device.id !== 'legacy') };
+    expect(encodeCase({ meta: null, lab: fitted }).ok).toBe(true);
   });
 });
