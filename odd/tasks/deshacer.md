@@ -33,10 +33,10 @@ Estado: S81–S85 y D42–D43 aprobadas por el usuario.
 
 | ID | Specs | Ruta | Commit |
 | --- | --- | --- | --- |
-| T1 — Historia en `labReducer`: pilas, `undo`/`redo`, tope, selección válida, `load`/`reset` que vacían, con tests | S81 | worker | |
-| T2 — Atajos de teclado en `App` con guarda de campos de texto, con tests | S82 | worker | |
-| T3 — Botones en la barra con estados deshabilitados y `aria-keyshortcuts`, catálogos es/en, con tests | S83, S85 | worker | |
-| T4 — Fidelidad de pins previos, diferencial del flujo libre, README y suite completa | S84 | worker | |
+| T1 — Historia en `labReducer`: pilas, `undo`/`redo`, tope, selección válida, `load`/`reset` que vacían, con tests | S81 | worker | 0e39aac |
+| T2 — Atajos de teclado en `App` con guarda de campos de texto, con tests | S82 | worker | 0e39aac |
+| T3 — Botones en la barra con estados deshabilitados y `aria-keyshortcuts`, catálogos es/en, con tests | S83, S85 | worker | 0e39aac |
+| T4 — Fidelidad de pins previos, diferencial del flujo libre, README y suite completa | S84 | worker | 0e39aac |
 
 Entrega: rama `feat/deshacer`, tramo de PR único contra `origin/main`.
 
@@ -47,3 +47,5 @@ Entrega: rama `feat/deshacer`, tramo de PR único contra `origin/main`.
 **D42 — Scope decidido por el usuario.** Solo deshacer/rehacer de la propuesta 4; «mis prácticas» queda fuera de este tramo. Botones Y atajos.
 
 **D43 — Decisiones previas que aplican.** Nada persiste (D38 de diagnostico-socratico.md: freezeados). El modo libre no se toca más allá de ganar su historia. Entrega por rama + PR (D19). RDD activo. Idioma de interfaz: español de España (L2 de desafios.md).
+
+**L2 — Tramo completo en un commit (`0e39aac`, 11 archivos, +661/−24).** **554 tests en 38 archivos** (21 nuevos), `tsc` limpio, build OK. Dos desviaciones documentadas del worker, aprobadas: undo/redo inertes durante la animación del paquete (como todo botón que cambia el laboratorio) y el undo no toca los mensajes del banner (ni escribe ni borra). El guard de `contentEditable` no es ejercitable en jsdom (solo input/textarea), dicho y quedado.
