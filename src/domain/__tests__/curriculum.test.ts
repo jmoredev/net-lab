@@ -125,6 +125,37 @@ describe('the ten levels (S72, S74)', () => {
   });
 });
 
+/**
+ * S75: the difficulty of a level is data, fixed by what the level asks for and never by its
+ * position in the suggested order. The mapping is the one the spec fixes, so a swap of two
+ * numbers or a level left without its tier fails here instead of on a card.
+ */
+describe('the declared difficulty (S75)', () => {
+  /** The mapping of S75, green, orange and red, one entry per level of S72 and S74. */
+  const DIFFICULTY: [string, string][] = [
+    ['enchufa-portatil', 'easy'],
+    ['falta-cable-internet', 'easy'],
+    ['wifi-sin-enganchar', 'easy'],
+    ['switch-del-aula', 'medium'],
+    ['ip-puesta-a-mano', 'hard'],
+    ['lio-de-cables', 'medium'],
+    ['monta-el-aula', 'medium'],
+    ['reparto-de-direcciones', 'hard'],
+    ['la-red-del-otro-aula', 'hard'],
+    ['el-aula-rotulada', 'easy'],
+  ];
+
+  it('gives every level one of the three difficulties', () => {
+    for (const entry of LEVELS) {
+      expect(['easy', 'medium', 'hard'], entry.id).toContain(entry.difficulty);
+    }
+  });
+
+  it('carries the mapping of the spec, level by level', () => {
+    expect(LEVELS.map((entry) => [entry.id, entry.difficulty])).toEqual(DIFFICULTY);
+  });
+});
+
 /** Level 1: one cable from the laptop to a LAN port of the router. */
 function solveLevel1(): Lab {
   const start = level('enchufa-portatil').startLab;

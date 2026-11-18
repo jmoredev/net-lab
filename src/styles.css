@@ -7,6 +7,11 @@
   --accent: #1f6feb;
   --state-online: #1a7f37;
   --state-offline: #c62828;
+  /* The three difficulties of a level (S75): green, orange and red. They colour the badge of a
+     card, which always writes the word, so the colour is reinforcement and never the answer. */
+  --level-easy: #1a7f37;
+  --level-medium: #b45309;
+  --level-hard: #c62828;
   --radius: 10px;
   --space: 8px;
 
@@ -891,6 +896,29 @@ body {
   color: var(--accent);
 }
 
+/* The declared difficulty of a level (S75), the same badge on a selector card and next to the
+   title of the panel: a chip that always carries the word, tinted green, orange or red. The
+   border inherits the colour of its modifier, so the three tiers are defined once. */
+.difficulty-badge {
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}
+
+.difficulty-badge--easy {
+  color: var(--level-easy);
+}
+
+.difficulty-badge--medium {
+  color: var(--level-medium);
+}
+
+.difficulty-badge--hard {
+  color: var(--level-hard);
+}
+
 /* The live goals of the level on screen (S69): a band above the editor, like the case brief,
    so the panel describes the lab without taking room from the canvas it describes. */
 .goals {
@@ -901,6 +929,13 @@ body {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   border-left: 3px solid var(--accent);
+}
+
+.goals__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .goals__title {

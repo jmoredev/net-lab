@@ -15,6 +15,7 @@ import { addDevice, createLab, type Lab } from '../../domain/lab';
 import type { Result } from '../../domain/types';
 import { ES } from '../../i18n/es';
 import { LanguageProvider } from '../../i18n/LanguageProvider';
+import type { UiKey } from '../../i18n/types';
 import { LevelsDialog } from '../components/LevelsDialog';
 import { emptyLevelProgress, type LevelProgress } from '../levelProgress';
 
@@ -68,6 +69,20 @@ function cardOf(title: string): HTMLElement {
   if (found === undefined) throw new Error(`the dialog has no card titled ${title}`);
   return found;
 }
+
+/** The difficulty badge of a card: the word and the colour of S75. */
+function badgeOf(card: HTMLElement): HTMLElement {
+  const badge = card.querySelector<HTMLElement>('.difficulty-badge');
+  if (badge === null) throw new Error('the card has no difficulty badge');
+  return badge;
+}
+
+/** The catalogue word of each difficulty, which is the text of every badge (S71, S75). */
+const DIFFICULTY_WORD: Record<string, string> = {
+  easy: ES['levels.difficultyEasy'],
+  medium: ES['levels.difficultyMedium'],
+  hard: ES['levels.difficultyHard'],
+};
 
 beforeEach(() => window.localStorage.clear());
 afterEach(() => {
@@ -150,6 +165,36 @@ describe('LevelsDialog: completed and last-visited marks (S66, S68)', () => {
 
     expect(screen.queryByText(ES['levels.completedBadge'])).toBeNull();
     expect(screen.queryByText(ES['levels.resume'])).toBeNull();
+  });
+});
+
+describe('LevelsDialog: the declared difficulty (S75)', () => {
+  it('shows the word and the colour of the difficulty on one card of each tier', () => {
+    renderDialog();
+
+    const expected: [string, string, string][] = [
+      [ES['levels.enchufa-portatil.title'], ES['levels.difficultyEasy'], 'easy'],
+      [ES['levels.switch-del-aula.title'], ES['levels.difficultyMedium'], 'medium'],
+      [ES['levels.ip-puesta-a-mano.title'], ES['levels.difficultyHard'], 'hard'],
+    ];
+
+    for (const [title, word, colour] of expected) {
+      const badge = badgeOf(cardOf(title));
+      // The word always travels as text; the colour is reinforcement, never the only channel.
+      expect(badge.textContent).toBe(word);
+      expect(badge.classList.contains(`difficulty-badge--${colour}`)).toBe(true);
+    }
+  });
+
+  it('gives all ten cards the difficulty their data declares', () => {
+    renderDialog();
+
+    expect(cards()).toHaveLength(LEVELS.length);
+    for (const level of LEVELS) {
+      const badge = badgeOf(cardOf(ES[`levels.${level.id}.title` as UiKey]));
+      expect(badge.textContent, level.id).toBe(DIFFICULTY_WORD[level.difficulty]);
+      expect(badge.classList.contains(`difficulty-badge--${level.difficulty}`), level.id).toBe(true);
+    }
   });
 });
 

@@ -3,7 +3,7 @@ import type { Lab } from '../../domain/lab';
 import { evaluateGoals, isLevelComplete, type Goal, type Level } from '../../domain/levels';
 import { useI18n } from '../../i18n/LanguageProvider';
 import type { MessageKey, MessageParams } from '../../i18n/types';
-import { levelTextKey } from './LevelsDialog';
+import { levelTextKey, difficultyBadgeClass, difficultyTextKey } from './LevelsDialog';
 
 /**
  * The catalogue sentence of one goal, with the name the device has right now (S69, S73).
@@ -48,8 +48,9 @@ export interface GoalsPanelProps {
 }
 
 /**
- * The live goals panel (S69): the consigna of the active level, one line per goal with the
- * name the device has right now, and the banner of a level well done.
+ * The live goals panel (S69): the consigna of the active level with the difficulty it
+ * declares (S75), one line per goal with the name the device has right now, and the banner of
+ * a level well done.
  *
  * The goals are derived from the lab of the moment on every render, which is what makes the
  * panel live: a cable, a manual address or a WiFi association changes the answer, and nothing
@@ -74,7 +75,14 @@ export function GoalsPanel({ level, lab, onNext, onBackToLevels, onCompleted }: 
 
   return (
     <section className="goals" aria-label={t('levels.panelTitle')}>
-      <h2 className="goals__title">{t(levelTextKey(level.id, 'title'))}</h2>
+      <div className="goals__heading">
+        <h2 className="goals__title">{t(levelTextKey(level.id, 'title'))}</h2>
+        {/* The same badge as the selector card, next to the title (S75). It is a sibling of
+            the heading and not part of it, so the title reads as the title alone. */}
+        <span className={difficultyBadgeClass(level.difficulty)}>
+          {t(difficultyTextKey(level.difficulty))}
+        </span>
+      </div>
       <p className="goals__brief">{t(levelTextKey(level.id, 'brief'))}</p>
 
       <h3 className="goals__subtitle">{t('levels.panelTitle')}</h3>

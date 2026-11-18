@@ -158,6 +158,10 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'levels.selectorHint': 'Elige un nivel: puedes saltar al que quieras y retomarlo otro día.',
   'levels.resume': 'Seguir por aquí',
   'levels.completedBadge': 'Superado',
+  // S75: la dificultad de cada nivel, siempre como palabra; el color solo la refuerza.
+  'levels.difficultyEasy': 'Fácil',
+  'levels.difficultyMedium': 'Medio',
+  'levels.difficultyHard': 'Difícil',
   'levels.goalOnline': '{name} llega a Internet',
   'levels.goalManualOnline': '{name} navega con su IP manual',
   // S73: los tres objetivos de configuración concreta, con los parámetros que el panel rellena.

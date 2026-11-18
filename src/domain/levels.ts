@@ -28,11 +28,19 @@ export type Goal =
   | { kind: 'router-network'; lanIp: string; dhcpStart: number; dhcpEnd: number }
   | { kind: 'device-named'; deviceId: string; name: string };
 
+/**
+ * How much a level asks for (S75). The tier is fixed by the requirements that complete it —
+ * one cable, a whole classroom, a manual address — and never by its position in the order.
+ */
+export type LevelDifficulty = 'easy' | 'medium' | 'hard';
+
 /** A level as the domain sees it: where it starts and what the student owes. */
 export interface Level {
   id: string;
   /** Visual suggestion only: it orders the selector and never locks anything (S67). */
   order: number;
+  /** Declared for the badge of the selector and the panel; it never blocks anything (S75). */
+  difficulty: LevelDifficulty;
   /** A regular `Lab`, built with the same mutators as the example: no new schema (S70). */
   startLab: Lab;
   goals: Goal[];
@@ -259,42 +267,60 @@ const LAB_9 = classroomInAnotherNetwork();
 const LAB_10 = unnamedClassroom();
 
 /**
- * The ten levels of S72 and S74, as data. Every start lab is built with the plain domain
- * mutators — the same ones the student will use to fix it — so a level is a lab the
- * app itself could have produced, and every mistake in it is a mistake the app allows.
- * Titles and briefs live in the i18n catalogues (S71); the domain carries only ids.
+ * The ten levels of S72 and S74, as data, each with the difficulty it declares (S75). Every
+ * start lab is built with the plain domain mutators — the same ones the student will use to
+ * fix it — so a level is a lab the app itself could have produced, and every mistake in it is
+ * a mistake the app allows. Titles and briefs live in the i18n catalogues (S71); the domain
+ * carries only ids.
  */
 export const LEVELS: Level[] = [
-  { id: 'enchufa-portatil', order: 1, startLab: LAB_1, goals: [online(LAB_1, 'Laptop-1')] },
-  { id: 'falta-cable-internet', order: 2, startLab: LAB_2, goals: [online(LAB_2, 'PC-1')] },
-  { id: 'wifi-sin-enganchar', order: 3, startLab: LAB_3, goals: [online(LAB_3, 'Laptop-1')] },
+  { id: 'enchufa-portatil', order: 1, difficulty: 'easy', startLab: LAB_1, goals: [online(LAB_1, 'Laptop-1')] },
+  {
+    id: 'falta-cable-internet',
+    order: 2,
+    difficulty: 'easy',
+    startLab: LAB_2,
+    goals: [online(LAB_2, 'PC-1')],
+  },
+  {
+    id: 'wifi-sin-enganchar',
+    order: 3,
+    difficulty: 'easy',
+    startLab: LAB_3,
+    goals: [online(LAB_3, 'Laptop-1')],
+  },
   {
     id: 'switch-del-aula',
     order: 4,
+    difficulty: 'medium',
     startLab: LAB_4,
     goals: [online(LAB_4, 'PC-1'), online(LAB_4, 'PC-2'), online(LAB_4, 'PC-3')],
   },
   {
     id: 'ip-puesta-a-mano',
     order: 5,
+    difficulty: 'hard',
     startLab: LAB_5,
     goals: [{ kind: 'manual-online', deviceId: idOf(LAB_5, 'Laptop-1') }],
   },
   {
     id: 'lio-de-cables',
     order: 6,
+    difficulty: 'medium',
     startLab: LAB_6,
     goals: [online(LAB_6, 'PC-1'), online(LAB_6, 'Smartphone-1'), online(LAB_6, 'Laptop-1')],
   },
   {
     id: 'monta-el-aula',
     order: 7,
+    difficulty: 'medium',
     startLab: LAB_7,
     goals: [online(LAB_7, 'PC-1'), online(LAB_7, 'PC-2'), online(LAB_7, 'Laptop-1')],
   },
   {
     id: 'reparto-de-direcciones',
     order: 8,
+    difficulty: 'hard',
     startLab: LAB_8,
     goals: [
       { kind: 'manual-online', deviceId: idOf(LAB_8, 'Laptop-1') },
@@ -308,6 +334,7 @@ export const LEVELS: Level[] = [
   {
     id: 'la-red-del-otro-aula',
     order: 9,
+    difficulty: 'hard',
     startLab: LAB_9,
     goals: [
       { kind: 'router-network', lanIp: '192.168.5.1', dhcpStart: 100, dhcpEnd: 200 },
@@ -322,6 +349,7 @@ export const LEVELS: Level[] = [
   {
     id: 'el-aula-rotulada',
     order: 10,
+    difficulty: 'easy',
     startLab: LAB_10,
     goals: [
       { kind: 'device-named', deviceId: idOf(LAB_10, 'Router'), name: 'Router-2B' },

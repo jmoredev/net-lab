@@ -26,6 +26,7 @@ import { LEVELS, type Level } from '../../domain/levels';
 import type { Result } from '../../domain/types';
 import { ES } from '../../i18n/es';
 import { LanguageProvider } from '../../i18n/LanguageProvider';
+import type { UiKey } from '../../i18n/types';
 import { GoalsPanel } from '../components/GoalsPanel';
 import {
   LEVEL_PROGRESS_STORAGE_KEY,
@@ -257,6 +258,54 @@ describe('entering a level (S68, S69)', () => {
 
     expect(canvasCaption('Equipo de Ana')).not.toBeNull();
     expect(JSON.stringify(level.startLab)).toBe(before);
+  });
+});
+
+describe('the goals panel shows the declared difficulty (S75)', () => {
+  it('puts the badge of the level next to its title, word and colour', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    // Level 1 is easy by what it asks — one cable — and not by being the first of the order.
+    await enterLevel(user, ES['levels.enchufa-portatil.title']);
+
+    const badge = goalsPanel().querySelector<HTMLElement>('.difficulty-badge');
+    expect(badge?.textContent).toBe(ES['levels.difficultyEasy']);
+    expect(badge?.classList.contains('difficulty-badge--easy')).toBe(true);
+  });
+
+  it('says the tier of every level the panel can open', () => {
+    const cases: [string, string, string][] = [
+      ['monta-el-aula', ES['levels.difficultyMedium'], 'medium'],
+      ['reparto-de-direcciones', ES['levels.difficultyHard'], 'hard'],
+      // Level 10 is the last of the order and still easy: the tier is what the level asks (S75).
+      ['el-aula-rotulada', ES['levels.difficultyEasy'], 'easy'],
+    ];
+
+    for (const [id, word, colour] of cases) {
+      const level = levelOf(id);
+      const view = render(
+        <LanguageProvider>
+          <GoalsPanel
+            level={level}
+            lab={level.startLab}
+            onNext={vi.fn()}
+            onBackToLevels={vi.fn()}
+            onCompleted={vi.fn()}
+          />
+        </LanguageProvider>,
+      );
+
+      const badge = goalsPanel().querySelector<HTMLElement>('.difficulty-badge');
+      expect(badge?.textContent, id).toBe(word);
+      expect(badge?.classList.contains(`difficulty-badge--${colour}`), id).toBe(true);
+      // The title the badge sits next to is untouched by it.
+      expect(
+        within(goalsPanel()).getByRole('heading', { name: ES[`levels.${id}.title` as UiKey] }),
+      ).not.toBeNull();
+
+      view.unmount();
+    }
   });
 });
 

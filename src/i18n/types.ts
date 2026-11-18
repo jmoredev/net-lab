@@ -143,6 +143,10 @@ export type UiKey =
   | 'levels.selectorHint'
   | 'levels.resume'
   | 'levels.completedBadge'
+  // The three difficulties a level can declare: the badge always writes the word (S75).
+  | 'levels.difficultyEasy'
+  | 'levels.difficultyMedium'
+  | 'levels.difficultyHard'
   | 'levels.goalOnline'
   | 'levels.goalManualOnline'
   | 'levels.goalAddressIs'

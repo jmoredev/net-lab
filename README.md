@@ -23,6 +23,8 @@ El botón `Desafíos` de la barra superior abre diez niveles de dificultad creci
 
 Se puede saltar al nivel que se quiera desde el primer día: la numeración es una sugerencia de recorrido, no un candado. El progreso (qué niveles están superados y por dónde ibas) se guarda en este navegador, sin cuentas ni registro, y sobrevive a una recarga.
 
+Cada nivel indica su dificultad con una insignia que lleva la palabra y el color: fácil en verde, medio en naranja y difícil en rojo, según lo que pide superarlo y no según su número.
+
 El modo libre sigue siendo la pantalla inicial y funciona exactamente igual: los desafíos son una capa que se abre cuando se quiere. El laboratorio de un nivel es un laboratorio normal, así que también se puede exportar como caso. Y si con un nivel abierto se carga el ejemplo, se abre un caso o se vacía el laboratorio, el nivel se cierra y el modo libre recupera la pantalla.
 
 ## Publicación
