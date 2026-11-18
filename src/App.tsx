@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { computeStatus } from './domain/diagnostics';
 import { createExampleLab } from './domain/example';
 import { getDevice } from './domain/lab';
+import { LEVELS, type Level } from './domain/levels';
 import { findHops } from './domain/path';
 import { LanguageProvider, useI18n } from './i18n/LanguageProvider';
 import { resolveStoredMessage } from './i18n';
@@ -9,13 +10,22 @@ import type { Travel } from './ui/animation';
 import { caseFailureText } from './ui/caseMessage';
 import { CasePanel } from './ui/components/CasePanel';
 import { ExportDialog } from './ui/components/ExportDialog';
+import { GoalsPanel } from './ui/components/GoalsPanel';
 import { ImportDialog } from './ui/components/ImportDialog';
+import { LevelsDialog } from './ui/components/LevelsDialog';
 import { DevicePalette } from './ui/components/DevicePalette';
 import { DevicePanel, type SendProblem } from './ui/components/DevicePanel';
 import { LabCanvas } from './ui/components/LabCanvas';
 import { LanguageSwitch } from './ui/components/LanguageSwitch';
 import { initialLabState, labReducer, labStateWith } from './ui/labReducer';
 import { needsReplaceConfirmation } from './ui/labComparison';
+import {
+  loadLevelProgress,
+  saveLevelProgress,
+  withLastLevel,
+  withLevelCompleted,
+  type LevelProgress,
+} from './ui/levelProgress';
 import { clearFragment, readCaseFromHash, type StartupCase } from './ui/startup';
 import { clearLab, loadLab, saveLab } from './ui/storage';
 import { useStoredCase } from './ui/useStoredCase';
@@ -24,6 +34,16 @@ import { useStoredCase } from './ui/useStoredCase';
 function initialState() {
   const stored = loadLab();
   return stored === null ? initialLabState() : labStateWith(stored);
+}
+
+/**
+ * The level after this one by `order`, or `null` on the last (S69). The order of S67 is a
+ * suggestion for the walk, so "next level" is nothing more than the next number.
+ */
+function nextLevelOf(level: Level): Level | null {
+  const ordered = [...LEVELS].sort((a, b) => a.order - b.order);
+  const index = ordered.findIndex((candidate) => candidate.id === level.id);
+  return index === -1 ? null : (ordered[index + 1] ?? null);
 }
 
 /**
@@ -52,10 +72,24 @@ function NetLab() {
   const [importOpen, setImportOpen] = useState(false);
   /** What a `#c=` link carried when the app started, and why it was refused when it was (S58). */
   const [boot, setBoot] = useState<StartupCase | null>(null);
+  /** The level selector of S68, on top of whatever lab is on screen. */
+  const [levelsOpen, setLevelsOpen] = useState(false);
+  /** The progress of S66: `superados` and `ultimo`, in this browser and nowhere else. */
+  const [progress, setProgress] = useState<LevelProgress>(loadLevelProgress);
+  /**
+   * The level being played, if any. It is app-local state and never part of the lab: the lab
+   * of a level is a plain `Lab` and stays a plain `Lab` (S70).
+   */
+  const [activeLevelId, setActiveLevelId] = useState<string | null>(null);
   /** Device being dragged on the canvas: the palette turns into the trash zone (S11). */
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const statuses = useMemo(() => computeStatus(state.lab), [state.lab]);
   const hasDevices = state.lab.devices.some((device) => device.kind !== 'internet');
+  const activeLevel =
+    activeLevelId === null
+      ? null
+      : (LEVELS.find((level) => level.id === activeLevelId) ?? null);
+  const followingLevel = activeLevel === null ? null : nextLevelOf(activeLevel);
   // The animation state lives here and never enters the reducer (S23).
   const busy = travel !== null;
 
@@ -126,6 +160,34 @@ function NetLab() {
     setTravel(null);
   }
 
+  /**
+   * Stores the progress of S66 and keeps the state on screen in step. The two writes of the
+   * spec go through here, and the completion is reported once by the panel, so nothing is
+   * saved again on every render.
+   */
+  function remember(next: LevelProgress): void {
+    setProgress(next);
+    saveLevelProgress(next);
+  }
+
+  /**
+   * Enters a level: its initial lab is copied in through the same door as an imported case
+   * (S68), so a level is a plain lab that can be edited, exported and stored as any other
+   * (S70). The selector asked first when there was work to lose; the parent only loads.
+   */
+  function enterLevel(level: Level): void {
+    dispatch({ type: 'load', lab: structuredClone(level.startLab) });
+    setTravel(null);
+    setActiveLevelId(level.id);
+    setLevelsOpen(false);
+    remember(withLastLevel(progress, level.id));
+  }
+
+  /** Marks a level as completed the first time the panel reports it (S69). */
+  function completeLevel(levelId: string): void {
+    remember(withLevelCompleted(progress, levelId));
+  }
+
   return (
     <div className="app">
       <header className="app__header">
@@ -141,6 +203,16 @@ function NetLab() {
             </button>
             <button type="button" className="button" disabled={busy} onClick={resetLab}>
               {t('header.clearLab')}
+            </button>
+            {/* The way into the challenges is a lab-level gesture, so it sits with the other
+                two: it replaces the lab on screen, and it is never behind a lock (S67, S68). */}
+            <button
+              type="button"
+              className="button"
+              disabled={busy}
+              onClick={() => setLevelsOpen(true)}
+            >
+              {t('levels.action')}
             </button>
           </div>
           <div className="app__group" role="group" aria-label={t('header.caseGroup')}>
@@ -197,6 +269,18 @@ function NetLab() {
 
       {caseMeta === null ? null : <CasePanel meta={caseMeta} />}
 
+      {/* The live goals of the level on screen (S69): the panel appears only while a level is
+          active, and the free editor below is untouched either way (S70). */}
+      {activeLevel === null ? null : (
+        <GoalsPanel
+          level={activeLevel}
+          lab={state.lab}
+          onNext={followingLevel === null ? null : () => enterLevel(followingLevel)}
+          onBackToLevels={() => setLevelsOpen(true)}
+          onCompleted={completeLevel}
+        />
+      )}
+
       {/* Sharing the case is what fills the panel above: the case it reports back is stored
           and shown (D32, T5) and comes back prefilled the next time the dialog opens. */}
       <ExportDialog
@@ -218,6 +302,16 @@ function NetLab() {
           dispatch({ type: 'load', lab: data.lab });
           setCaseMeta(data.meta);
         }}
+      />
+
+      {/* The selector of S68: opening it never touches the lab; entering a level replaces it
+          through the same door as an imported case, after asking when there is work to lose. */}
+      <LevelsDialog
+        open={levelsOpen}
+        lab={state.lab}
+        progress={progress}
+        onClose={() => setLevelsOpen(false)}
+        onEnter={enterLevel}
       />
 
       <div className="app__body">

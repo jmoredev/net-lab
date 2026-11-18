@@ -1,0 +1,424 @@
+// @vitest-environment jsdom
+/**
+ * The «Desafíos» layer on the real app (S67–S70): the header button, the selector, the live
+ * goals panel, the completion banner and the way from one level to the next.
+ *
+ * Everything is driven the way a student drives it — the header button, the level cards, the
+ * canvas and the device panel — and the only reads behind the interface are the two storage
+ * keys the specs define (S31, S66).
+ */
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { App } from '../../App';
+import { addDevice, connectWifi, createLab, setAddressing, type Lab } from '../../domain/lab';
+import { LEVELS, type Level } from '../../domain/levels';
+import type { Result } from '../../domain/types';
+import { ES } from '../../i18n/es';
+import { LanguageProvider } from '../../i18n/LanguageProvider';
+import { GoalsPanel } from '../components/GoalsPanel';
+import {
+  LEVEL_PROGRESS_STORAGE_KEY,
+  emptyLevelProgress,
+  loadLevelProgress,
+} from '../levelProgress';
+import { STORAGE_KEY, saveLab } from '../storage';
+
+function unwrap(result: Result<Lab>): Lab {
+  if (!result.ok) throw new Error(result.error);
+  return result.value;
+}
+
+function idOf(lab: Lab, name: string): string {
+  const device = lab.devices.find((candidate) => candidate.name === name);
+  if (device === undefined) throw new Error(`the lab has no device named ${name}`);
+  return device.id;
+}
+
+function levelOf(id: string): Level {
+  const found = LEVELS.find((level) => level.id === id);
+  if (found === undefined) throw new Error(`there is no level ${id}`);
+  return found;
+}
+
+/** Work of the student's own: entering a level would replace it (S68, S55). */
+function ownLab(): Lab {
+  return unwrap(addDevice(createLab(), 'router', { x: 560, y: 160 }));
+}
+
+/** A caption of the canvas, which is an SVG `<text>` and not a paragraph (S29). */
+function canvasCaption(name: string): Element {
+  // Once a device has an address, the canvas writes `name · ip` (S29), so the name alone is
+  // a prefix and not the whole caption.
+  const captions = Array.from(document.querySelectorAll('svg text')).filter(
+    (node) => node.textContent === name || node.textContent?.startsWith(`${name} · `) === true,
+  );
+  if (captions.length === 0) throw new Error(`the canvas shows no caption ${name}`);
+  return captions[0];
+}
+
+/** The goals panel of the level on screen, named by the catalogue (S69). */
+function goalsPanel(): HTMLElement {
+  return screen.getByRole('region', { name: ES['levels.panelTitle'] });
+}
+
+/** One goal line, found by the sentence the catalogue writes for it (S69, S71). */
+function goalLine(sentence: string): HTMLElement {
+  return within(goalsPanel()).getByText(sentence);
+}
+
+function metOf(sentence: string): string | null {
+  return goalLine(sentence).getAttribute('data-met');
+}
+
+function statusBanner(): HTMLElement | null {
+  return within(goalsPanel()).queryByRole('status');
+}
+
+/** The goal sentence of an online goal, with the name the lab currently shows (S71). */
+function onlineSentence(name: string): string {
+  return ES['levels.goalOnline'].replace('{name}', name);
+}
+
+/** The goal sentence of a manual-address goal, with the current name (S71). */
+function manualSentence(name: string): string {
+  return ES['levels.goalManualOnline'].replace('{name}', name);
+}
+
+/** Opens the selector from the header and enters one level by its title (S67, S68). */
+async function enterLevel(user: ReturnType<typeof userEvent.setup>, title: string): Promise<void> {
+  await user.click(screen.getByRole('button', { name: ES['levels.action'] }));
+  await user.click(screen.getByRole('button', { name: new RegExp(title) }));
+}
+
+/** Selects a device on the canvas, which opens its panel without any drag (S29). */
+function selectDevice(name: string): void {
+  fireEvent.click(canvasCaption(name));
+}
+
+/** Level 3 asks for one laptop online: joining the WiFi of the router is the whole level. */
+async function solveLevel3(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  selectDevice('Laptop-1');
+  await user.click(screen.getByRole('button', { name: ES['action.connectWifi'] }));
+}
+
+beforeEach(() => {
+  window.localStorage.clear();
+  window.history.replaceState(null, '', '/');
+});
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
+
+describe('«Desafíos» in the free lab (S67, S70)', () => {
+  it('starts in the free lab and opens and closes the selector without touching it', async () => {
+    const user = userEvent.setup();
+    saveLab(ownLab());
+    render(<App />);
+
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    expect(screen.queryByRole('region', { name: ES['levels.panelTitle'] })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: ES['levels.action'] }));
+    expect(screen.getByRole('dialog')).not.toBeNull();
+
+    await user.click(screen.getByRole('button', { name: ES['dialog.close'] }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    // Neither the lab on screen nor the stored one changed, and no level became active.
+    expect(canvasCaption('Router')).not.toBeNull();
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBe(stored);
+    expect(screen.queryByRole('region', { name: ES['levels.panelTitle'] })).toBeNull();
+  });
+
+  it('does not ask anything when the student declines replacing their lab (S68)', async () => {
+    const user = userEvent.setup();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    saveLab(ownLab());
+    render(<App />);
+
+    await enterLevel(user, ES['levels.enchufa-portatil.title']);
+
+    expect(confirm).toHaveBeenCalledWith(ES['import.confirmReplace']);
+    // Declined: the selector stays open, the student's lab stays on screen.
+    expect(screen.getByRole('dialog')).not.toBeNull();
+    expect(screen.queryByRole('region', { name: ES['levels.panelTitle'] })).toBeNull();
+    expect(canvasCaption('Router')).not.toBeNull();
+    expect(loadLevelProgress()).toEqual(emptyLevelProgress());
+  });
+});
+
+describe('entering a level (S68, S69)', () => {
+  it('loads the initial lab of the level, shows its goals and remembers where it left off', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await enterLevel(user, ES['levels.enchufa-portatil.title']);
+
+    // The selector is out of the way and the initial lab of the level is on screen.
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(canvasCaption('Laptop-1')).not.toBeNull();
+
+    // The panel shows the consigna and the goals, all of them red at the start.
+    const panel = goalsPanel();
+    expect(within(panel).getByRole('heading', { name: ES['levels.enchufa-portatil.title'] })).not.toBeNull();
+    expect(within(panel).getByText(ES['levels.enchufa-portatil.brief'])).not.toBeNull();
+    expect(metOf(onlineSentence('Laptop-1'))).toBe('false');
+    expect(statusBanner()).toBeNull();
+
+    // The progress store knows where the student is, and nothing is completed yet.
+    expect(loadLevelProgress()).toEqual({ superados: [], ultimo: 'enchufa-portatil' });
+    expect(window.localStorage.getItem(LEVEL_PROGRESS_STORAGE_KEY)).not.toBeNull();
+  });
+
+  it('loads the lab as a copy, so the level data is never mutated by the student', async () => {
+    const user = userEvent.setup();
+    const level = levelOf('enchufa-portatil');
+    const before = JSON.stringify(level.startLab);
+    render(<App />);
+
+    await enterLevel(user, ES['levels.enchufa-portatil.title']);
+    selectDevice('Laptop-1');
+    const name = screen.getByLabelText(ES['field.name']);
+    await user.clear(name);
+    await user.type(name, 'Equipo de Ana{Enter}');
+
+    expect(canvasCaption('Equipo de Ana')).not.toBeNull();
+    expect(JSON.stringify(level.startLab)).toBe(before);
+  });
+});
+
+describe('the goals panel is live (S69)', () => {
+  it('turns the goal green when the lab changes and celebrates the level', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await enterLevel(user, ES['levels.wifi-sin-enganchar.title']);
+    expect(metOf(onlineSentence('Laptop-1'))).toBe('false');
+
+    await solveLevel3(user);
+
+    // Re-evaluated against the lab on screen, with no stale answer from the first render.
+    expect(metOf(onlineSentence('Laptop-1'))).toBe('true');
+    expect(within(goalsPanel()).getByRole('status').textContent).toBe(ES['levels.done']);
+    expect(within(goalsPanel()).getByRole('button', { name: ES['levels.next'] })).not.toBeNull();
+    expect(
+      within(goalsPanel()).getByRole('button', { name: ES['levels.backToLevels'] }),
+    ).not.toBeNull();
+
+    // The level is in `superados` and stays where the student left off.
+    expect(loadLevelProgress()).toEqual({
+      superados: ['wifi-sin-enganchar'],
+      ultimo: 'wifi-sin-enganchar',
+    });
+  });
+
+  it('saves the completion once, not on every later render', async () => {
+    const user = userEvent.setup();
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+    const progressWrites = (): number =>
+      setItem.mock.calls.filter(([key]) => key === LEVEL_PROGRESS_STORAGE_KEY).length;
+
+    render(<App />);
+    await enterLevel(user, ES['levels.wifi-sin-enganchar.title']);
+    const afterEntry = progressWrites();
+
+    await solveLevel3(user);
+    const afterCompletion = progressWrites();
+    expect(afterCompletion).toBe(afterEntry + 1);
+
+    // Two more renders of the same panel save nothing: the completion is already stored.
+    selectDevice('Laptop-1');
+    selectDevice('Laptop-1');
+    expect(statusBanner()).not.toBeNull();
+    expect(progressWrites()).toBe(afterCompletion);
+  });
+
+  it('offers the next level and keeps the completed one marked (S69)', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await enterLevel(user, ES['levels.wifi-sin-enganchar.title']);
+    await solveLevel3(user);
+    await user.click(screen.getByRole('button', { name: ES['levels.next'] }));
+
+    // The next level of the data, ordered by `order`, is on screen with its own goals.
+    expect(
+      within(goalsPanel()).getByRole('heading', { name: ES['levels.switch-del-aula.title'] }),
+    ).not.toBeNull();
+    expect(canvasCaption('PC-1')).not.toBeNull();
+    expect(loadLevelProgress()).toEqual({
+      superados: ['wifi-sin-enganchar'],
+      ultimo: 'switch-del-aula',
+    });
+  });
+});
+
+describe('replaying a completed level (S69)', () => {
+  it('reloads its initial lab and never deletes the progress', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App />);
+
+    await enterLevel(user, ES['levels.wifi-sin-enganchar.title']);
+    await solveLevel3(user);
+    expect(loadLevelProgress().superados).toEqual(['wifi-sin-enganchar']);
+
+    await user.click(screen.getByRole('button', { name: ES['levels.backToLevels'] }));
+    const dialog = screen.getByRole('dialog');
+    const card = within(dialog)
+      .getAllByRole('button')
+      .find((button) => button.querySelector('.level-card__title')?.textContent === ES['levels.wifi-sin-enganchar.title']);
+    if (card === undefined) throw new Error('the selector has no card for the completed level');
+    expect(within(card).getByText(ES['levels.completedBadge'])).not.toBeNull();
+    expect(within(card).getByText(ES['levels.resume'])).not.toBeNull();
+
+    await user.click(card);
+
+    // Replayed from the start lab: the goal is red again, and the badge is still earned.
+    expect(metOf(onlineSentence('Laptop-1'))).toBe('false');
+    expect(statusBanner()).toBeNull();
+    expect(loadLevelProgress()).toEqual({
+      superados: ['wifi-sin-enganchar'],
+      ultimo: 'wifi-sin-enganchar',
+    });
+  });
+});
+
+describe('GoalsPanel: the goals follow the lab (S69)', () => {
+  /** Level 5 solved: the laptop keeps its manual address, inside the right network. */
+  function fixedLevel5(): Lab {
+    const level = levelOf('ip-puesta-a-mano');
+    return unwrap(
+      setAddressing(level.startLab, idOf(level.startLab, 'Laptop-1'), {
+        mode: 'manual',
+        manualIp: '192.168.1.50',
+        manualGateway: '192.168.1.1',
+      }),
+    );
+  }
+
+  /** Level 8 solved: both laptops with a manual address of the LAN, and the phone joined. */
+  function fixedLevel8(): Lab {
+    const level = levelOf('reparto-de-direcciones');
+    const withFirst = unwrap(
+      setAddressing(level.startLab, idOf(level.startLab, 'Laptop-1'), {
+        mode: 'manual',
+        manualIp: '192.168.1.50',
+        manualGateway: '192.168.1.1',
+      }),
+    );
+    const withSecond = unwrap(
+      setAddressing(withFirst, idOf(withFirst, 'Laptop-2'), {
+        mode: 'manual',
+        manualIp: '192.168.1.60',
+        manualGateway: '192.168.1.1',
+      }),
+    );
+    return unwrap(connectWifi(withSecond, idOf(withSecond, 'Smartphone-1'), true));
+  }
+
+  function renderPanel(level: Level, lab: Lab, onNext: (() => void) | null, onCompleted = vi.fn()) {
+    const result = render(
+      <LanguageProvider>
+        <GoalsPanel
+          level={level}
+          lab={lab}
+          onNext={onNext}
+          onBackToLevels={vi.fn()}
+          onCompleted={onCompleted}
+        />
+      </LanguageProvider>,
+    );
+    return { onCompleted, rerender: (nextLab: Lab) => result.rerender(
+      <LanguageProvider>
+        <GoalsPanel
+          level={level}
+          lab={nextLab}
+          onNext={onNext}
+          onBackToLevels={vi.fn()}
+          onCompleted={onCompleted}
+        />
+      </LanguageProvider>,
+    ) };
+  }
+
+  it('writes the catalogue sentence with the name of the current lab', () => {
+    const level = levelOf('ip-puesta-a-mano');
+    renderPanel(level, level.startLab, vi.fn());
+
+    expect(metOf(manualSentence('Laptop-1'))).toBe('false');
+  });
+
+  it('re-evaluates on every lab change, red then green', () => {
+    const level = levelOf('ip-puesta-a-mano');
+    const { rerender } = renderPanel(level, level.startLab, vi.fn());
+    expect(metOf(manualSentence('Laptop-1'))).toBe('false');
+
+    rerender(fixedLevel5());
+    expect(metOf(manualSentence('Laptop-1'))).toBe('true');
+    expect(within(goalsPanel()).getByRole('status').textContent).toBe(ES['levels.done']);
+  });
+
+  it('marks the level once, not on every render', () => {
+    const level = levelOf('reparto-de-direcciones');
+    const { onCompleted, rerender } = renderPanel(level, fixedLevel8(), null);
+
+    expect(onCompleted).toHaveBeenCalledTimes(1);
+    expect(onCompleted).toHaveBeenCalledWith('reparto-de-direcciones');
+
+    rerender(fixedLevel8());
+    expect(onCompleted).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers going back to the selector instead of a next level on the eighth (S69)', () => {
+    const level = levelOf('reparto-de-direcciones');
+    renderPanel(level, fixedLevel8(), null);
+
+    expect(within(goalsPanel()).getByText(ES['levels.finishedAll'])).not.toBeNull();
+    expect(
+      within(goalsPanel()).getByRole('button', { name: ES['levels.backToLevels'] }),
+    ).not.toBeNull();
+    expect(within(goalsPanel()).queryByRole('button', { name: ES['levels.next'] })).toBeNull();
+  });
+
+  it('offers no action until the level is complete', () => {
+    const level = levelOf('enchufa-portatil');
+    renderPanel(level, level.startLab, vi.fn());
+
+    // Not complete: no action is offered yet.
+    expect(within(goalsPanel()).queryByRole('button', { name: ES['levels.next'] })).toBeNull();
+  });
+
+  it('shows the brief and the goal list of the level (S69)', () => {
+    const level = levelOf('switch-del-aula');
+    renderPanel(level, level.startLab, vi.fn());
+
+    const panel = goalsPanel();
+    expect(within(panel).getByRole('heading', { name: ES['levels.switch-del-aula.title'] })).not.toBeNull();
+    expect(within(panel).getByText(ES['levels.switch-del-aula.brief'])).not.toBeNull();
+    expect(within(panel).getAllByRole('listitem')).toHaveLength(3);
+    expect(metOf(onlineSentence('PC-1'))).toBe('false');
+    expect(metOf(onlineSentence('PC-2'))).toBe('false');
+    expect(metOf(onlineSentence('PC-3'))).toBe('false');
+  });
+});
+
+describe('the free-mode editor is untouched (S70)', () => {
+  it('keeps saving the lab of a level on screen as the stored lab', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await enterLevel(user, ES['levels.enchufa-portatil.title']);
+
+    await waitFor(() => expect(window.localStorage.getItem(STORAGE_KEY)).not.toBeNull());
+    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '') as {
+      version: number;
+      lab: Lab;
+    };
+    expect(stored.version).toBe(1);
+    expect(stored.lab.devices.map((device) => device.name)).toContain('Laptop-1');
+  });
+});
