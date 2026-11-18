@@ -23,7 +23,7 @@ export interface ExportDialogProps {
   onExported: (meta: CaseMeta | null) => void;
 }
 
-/** The three fields start empty and are replaced by the case in force when the dialog opens. */
+/** The three fields start empty and are replaced by the case in force every time the dialog opens. */
 const EMPTY_META: CaseMeta = { titulo: '', consigna: '', autor: '' };
 
 const MIME_JSON = 'application/json';
@@ -60,6 +60,9 @@ export function ExportDialog({ open, lab, initialMeta, onClose, onExported }: Ex
 
     // A stamp is about the link that was on screen; reopening never shows a stale one (S52).
     setStatus(null);
+    // Nor does a draft that was never shared survive a visit: reopening starts from the case
+    // in force, which is what D32 promises to whoever exports it again.
+    setFields(initialMeta ?? EMPTY_META);
 
     if (typeof dialog.showModal === 'function') {
       if (!dialog.open) dialog.showModal();
@@ -109,7 +112,9 @@ export function ExportDialog({ open, lab, initialMeta, onClose, onExported }: Ex
   function download(): void {
     if (!encoded.ok) return;
     onExported(meta);
-    // The file carries the same string the link does, so one analyser opens both (S53, S54).
+    // The file carries the indented JSON document, never the base64 code of the link (S50): a
+    // `.json` must open in an editor, be correctable by hand and go back in through the analyser.
+    // The link keeps the compact form, because there every byte costs a URL character.
     const file = caseFileName(meta?.titulo ?? '', new Date());
     downloadText(file, encoded.json, MIME_JSON);
     setStatus({ kind: 'downloaded', file });

@@ -9,7 +9,9 @@ import type { UiKey } from './types';
 export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   // Shell
   'app.title': 'Net-Lab — network lab',
+  'header.labGroup': 'Lab',
   'header.loadExample': 'Load example',
+  'header.caseGroup': 'Case',
   'case.label': 'Case brief',
   'case.untitled': 'Untitled case',
   'case.by': 'By {author}',
@@ -191,7 +193,7 @@ export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'formato-invalido': 'The link does not contain a valid case. Check that you copied it in full.',
   'version-no-soportada': 'This case was created with another version of Net-Lab ({v}). This version cannot open it.',
   'esquema-invalido': 'The case is missing a value or has one Net-Lab does not accept: {campo}.',
-  'demasiados-dispositivos': 'The case has {n} devices and the maximum is 20.',
+  'demasiados-dispositivos': 'The case has {n} devices and the maximum is {max}.',
   'cable-invalido': 'There is a cable that cannot be connected: {detalle}',
   'payload-demasiado-grande': 'The link is too long to open ({n} characters, maximum {max}).',
 };
