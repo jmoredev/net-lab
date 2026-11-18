@@ -10,17 +10,23 @@ import {
   type Lab,
   type Result,
 } from './lab';
+import { hostOctet, isHostIp } from './subnet';
 import type { DeviceKind, Point } from './types';
 
 /**
- * One thing a level asks the student to make true (S65). Two kinds cover the whole
- * curriculum of S72: reaching the Internet, and reaching it with a manual address
- * put in by hand — which DHCP cannot satisfy on purpose, because dodging the
- * reasoning by switching back to automatic is not solving the level.
+ * One thing a level asks the student to make true (S65, S73). Two kinds cover reaching the
+ * Internet — with DHCP and with a manual address put in by hand, which DHCP cannot satisfy on
+ * purpose, because dodging the reasoning by switching back to automatic is not solving the
+ * level. The other three ask for a concrete configuration: one exact address, the network of
+ * the router with its DHCP range, and the name of a device (S73). All five are questions the
+ * domain already answers, so a goal needs no new model and no new mutation (S65).
  */
 export type Goal =
   | { kind: 'online'; deviceId: string }
-  | { kind: 'manual-online'; deviceId: string };
+  | { kind: 'manual-online'; deviceId: string }
+  | { kind: 'address-is'; deviceId: string; ip: string; gateway: string }
+  | { kind: 'router-network'; lanIp: string; dhcpStart: number; dhcpEnd: number }
+  | { kind: 'device-named'; deviceId: string; name: string };
 
 /** A level as the domain sees it: where it starts and what the student owes. */
 export interface Level {
@@ -45,14 +51,51 @@ export interface GoalState {
  */
 export function evaluateGoals(lab: Lab, goals: Goal[]): GoalState[] {
   const statuses = computeStatus(lab);
-  return goals.map((goal) => {
-    const device = getDevice(lab, goal.deviceId);
-    if (device === undefined) return { goal, met: false };
-    const status = statuses[goal.deviceId];
-    if (status === undefined) return { goal, met: false };
-    if (goal.kind === 'online') return { goal, met: status.hasInternet };
-    return { goal, met: status.hasInternet && effectiveMode(device) === 'manual' };
-  });
+  return goals.map((goal) => ({ goal, met: isGoalMet(lab, statuses, goal) }));
+}
+
+function isGoalMet(
+  lab: Lab,
+  statuses: ReturnType<typeof computeStatus>,
+  goal: Goal,
+): boolean {
+  // The router goal asks about the lab and not about a device, so it never looks one up.
+  if (goal.kind === 'router-network') return routerNetworkIsMet(lab, goal);
+
+  const device = getDevice(lab, goal.deviceId);
+  if (device === undefined) return false;
+  if (goal.kind === 'device-named') return device.name === goal.name;
+
+  const status = statuses[goal.deviceId];
+  if (status === undefined) return false;
+  if (goal.kind === 'online') return status.hasInternet;
+  if (goal.kind === 'manual-online') return status.hasInternet && effectiveMode(device) === 'manual';
+  // The address has to be exactly the one asked for, put in by hand, and it has to work.
+  return (
+    status.hasInternet &&
+    effectiveMode(device) === 'manual' &&
+    device.manualIp === goal.ip &&
+    device.manualGateway === goal.gateway
+  );
+}
+
+/**
+ * The network of the router and its DHCP range, with the invariants of `setDhcpRange`: a range
+ * of usable hosts of that /24, never inverted, and never containing the router itself. A level
+ * asking for a range the domain would refuse stays red even if the stored numbers match.
+ */
+function routerNetworkIsMet(lab: Lab, goal: { lanIp: string; dhcpStart: number; dhcpEnd: number }): boolean {
+  const router = lab.router;
+  if (router === null) return false;
+  if (router.lanIp !== goal.lanIp) return false;
+  if (router.dhcpStart !== goal.dhcpStart || router.dhcpEnd !== goal.dhcpEnd) return false;
+
+  const routerHost = hostOctet(goal.lanIp);
+  if (routerHost === null || !isHostIp(goal.lanIp)) return false;
+  const isHostNumber = (value: number) => Number.isInteger(value) && value >= 2 && value <= 254;
+  if (!isHostNumber(goal.dhcpStart) || !isHostNumber(goal.dhcpEnd)) return false;
+  if (goal.dhcpStart > goal.dhcpEnd) return false;
+  return !(goal.dhcpStart <= routerHost && routerHost <= goal.dhcpEnd);
 }
 
 /** A level is complete when it asked for something and all of it is met (S69). */
@@ -149,6 +192,60 @@ function misplacedManualAddresses(): Lab {
   return manually(manually(base, first.id, '192.168.2.50'), second.id, '192.168.3.50');
 }
 
+/**
+ * Level 9: a classroom working in `192.168.1.x` — router on the Internet, a switch, two PCs
+ * and a laptop with a manual address — while the other classroom uses `192.168.5.x`. Nothing
+ * is broken here: everything is simply in the wrong network, so both goals start red.
+ */
+function classroomInAnotherNetwork(): Lab {
+  const router = add('router', createLab(), AT.router);
+  const labSwitch = add('switch', router.lab, AT.switchDevice);
+  const first = add('desktop', labSwitch.lab, AT.left);
+  const second = add('desktop', first.lab, AT.middleLeft);
+  const laptop = add('laptop', second.lab, AT.right);
+
+  const wiredSwitch = connect(
+    laptop.lab,
+    { deviceId: labSwitch.id, portId: 'p1' },
+    { deviceId: router.id, portId: 'lan1' },
+  );
+  const wiredFirst = connect(
+    wiredSwitch,
+    { deviceId: first.id, portId: 'eth' },
+    { deviceId: labSwitch.id, portId: 'p2' },
+  );
+  const wiredSecond = connect(
+    wiredFirst,
+    { deviceId: second.id, portId: 'eth' },
+    { deviceId: labSwitch.id, portId: 'p3' },
+  );
+  const wiredLaptop = connect(
+    wiredSecond,
+    { deviceId: laptop.id, portId: 'eth' },
+    { deviceId: router.id, portId: 'lan2' },
+  );
+  return manually(withInternet(wiredLaptop, router.id), laptop.id, '192.168.1.50', '192.168.1.1');
+}
+
+/** Level 10: a running classroom whose devices still carry the names they were born with. */
+function unnamedClassroom(): Lab {
+  const router = add('router', createLab(), AT.router);
+  const labSwitch = add('switch', router.lab, AT.switchDevice);
+  const pc = add('desktop', labSwitch.lab, AT.left);
+
+  const wiredSwitch = connect(
+    pc.lab,
+    { deviceId: labSwitch.id, portId: 'p1' },
+    { deviceId: router.id, portId: 'lan1' },
+  );
+  const wiredPc = connect(
+    wiredSwitch,
+    { deviceId: pc.id, portId: 'eth' },
+    { deviceId: labSwitch.id, portId: 'p2' },
+  );
+  return withInternet(wiredPc, router.id);
+}
+
 /** Every start lab, built once at module load: each level reads its own lab below. */
 const LAB_1 = cablelessLaptop();
 const LAB_2 = labWithoutWanCable();
@@ -158,9 +255,11 @@ const LAB_5 = wrongManualAddress();
 const LAB_6 = mixedFailures();
 const LAB_7 = scatteredClassroom();
 const LAB_8 = misplacedManualAddresses();
+const LAB_9 = classroomInAnotherNetwork();
+const LAB_10 = unnamedClassroom();
 
 /**
- * The eight levels of S72, as data. Every start lab is built with the plain domain
+ * The ten levels of S72 and S74, as data. Every start lab is built with the plain domain
  * mutators — the same ones the student will use to fix it — so a level is a lab the
  * app itself could have produced, and every mistake in it is a mistake the app allows.
  * Titles and briefs live in the i18n catalogues (S71); the domain carries only ids.
@@ -203,6 +302,32 @@ export const LEVELS: Level[] = [
       online(LAB_8, 'Smartphone-1'),
     ],
   },
+  // S74: two challenges of concrete configuration, added after the eight of S72 and leaving
+  // them exactly as they were. Level 9 asks for the network of the classroom and one exact
+  // address; level 10, for the names of two devices.
+  {
+    id: 'la-red-del-otro-aula',
+    order: 9,
+    startLab: LAB_9,
+    goals: [
+      { kind: 'router-network', lanIp: '192.168.5.1', dhcpStart: 100, dhcpEnd: 200 },
+      {
+        kind: 'address-is',
+        deviceId: idOf(LAB_9, 'Laptop-1'),
+        ip: '192.168.5.10',
+        gateway: '192.168.5.1',
+      },
+    ],
+  },
+  {
+    id: 'el-aula-rotulada',
+    order: 10,
+    startLab: LAB_10,
+    goals: [
+      { kind: 'device-named', deviceId: idOf(LAB_10, 'Router'), name: 'Router-2B' },
+      { kind: 'device-named', deviceId: idOf(LAB_10, 'PC-1'), name: 'PC-Docente' },
+    ],
+  },
 ];
 
 /** An `online` goal for the device a level's lab named at build time. */
@@ -234,8 +359,8 @@ function withInternet(lab: Lab, routerId: string): Lab {
 }
 
 /** A manual address in another network: the student has to read it and see why it fails. */
-function manually(lab: Lab, deviceId: string, ip: string): Lab {
-  return unwrap(setAddressing(lab, deviceId, { mode: 'manual', manualIp: ip, manualGateway: '192.168.1.1' }));
+function manually(lab: Lab, deviceId: string, ip: string, gateway = '192.168.1.1'): Lab {
+  return unwrap(setAddressing(lab, deviceId, { mode: 'manual', manualIp: ip, manualGateway: gateway }));
 }
 
 /** A broken builder chain is a programming error, never a state the student can reach. */

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The level selector (S67, S68): the eight levels as a grid with no locks, the marks of the
+ * The level selector (S67, S68): the ten levels as a grid with no locks, the marks of the
  * progress store, and the entry that asks before replacing work of the student's own.
  *
  * jsdom implements no `showModal`, so the component's fallback is what runs here — the same
@@ -18,7 +18,7 @@ import { LanguageProvider } from '../../i18n/LanguageProvider';
 import { LevelsDialog } from '../components/LevelsDialog';
 import { emptyLevelProgress, type LevelProgress } from '../levelProgress';
 
-/** The eight titles of S72, in the order the selector has to show them. */
+/** The ten titles of S72 and S74, in the order the selector has to show them. */
 const TITLES = [
   ES['levels.enchufa-portatil.title'],
   ES['levels.falta-cable-internet.title'],
@@ -28,6 +28,8 @@ const TITLES = [
   ES['levels.lio-de-cables.title'],
   ES['levels.monta-el-aula.title'],
   ES['levels.reparto-de-direcciones.title'],
+  ES['levels.la-red-del-otro-aula.title'],
+  ES['levels.el-aula-rotulada.title'],
 ];
 
 function unwrap(result: Result<Lab>): Lab {
@@ -52,7 +54,7 @@ function renderDialog(lab: Lab = createLab(), progress: LevelProgress = emptyLev
   return { onEnter, onClose, setOpen: (open: boolean) => result.rerender(view(open)) };
 }
 
-/** The eight level cards, in the order the dialog rendered them. */
+/** The ten level cards, in the order the dialog rendered them. */
 function cards(): HTMLElement[] {
   return within(screen.getByRole('dialog'))
     .getAllByRole('button')
@@ -73,7 +75,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('LevelsDialog: the eight levels, never locked (S67)', () => {
+describe('LevelsDialog: the ten levels, never locked (S67, S74)', () => {
   it('renders nothing while it is closed', () => {
     const { setOpen } = renderDialog();
     expect(screen.queryByRole('dialog')).not.toBeNull();
@@ -82,16 +84,16 @@ describe('LevelsDialog: the eight levels, never locked (S67)', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('lists the eight levels in order, one card each, with the numbers of the data', () => {
+  it('lists the ten levels in order, one card each, with the numbers of the data', () => {
     renderDialog();
 
     expect(cards().map((button) => button.querySelector('.level-card__title')?.textContent)).toEqual(
       TITLES,
     );
     expect(cards().map((button) => button.querySelector('.level-card__order')?.textContent)).toEqual(
-      ['1', '2', '3', '4', '5', '6', '7', '8'],
+      ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
     );
-    // Exactly the eight levels of the domain, no more and no fewer.
+    // Exactly the ten levels of the domain, no more and no fewer.
     expect(cards()).toHaveLength(LEVELS.length);
   });
 

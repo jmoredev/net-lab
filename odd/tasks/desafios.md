@@ -42,6 +42,25 @@ Estado: S65–S71 y D34–D35 propuestas al usuario; recorrido de 8 niveles prop
 
 Los niveles 1–4 son de cable y topología (ESO); 5–8 agregan direccionamiento y diagnóstico (transición a Bachillerato). El 8 es el techo del dominio actual: una sola subred /24, un router. Una segunda subred es otro tramo, no este.
 
+
+**S73 — Tres tipos de objetivo de configuración concreta.** Se suman a los dos de S65 y se evalúan igual: preguntas que el dominio ya sabe responder, sin tocar el laboratorio.
+
+| Objetivo | Pregunta | Cómo se verifica |
+| --- | --- | --- |
+| `address-is` `{ deviceId, ip, gateway }` | ¿Ese dispositivo navega con exactamente esa IP manual y esa puerta de enlace? | `effectiveMode === 'manual'` y `manualIp === ip` y `manualGateway === gateway` y `hasInternet` |
+| `router-network` `{ lanIp, dhcpStart, dhcpEnd }` | ¿La red del aula es esa y su rango DHCP es ese, y es válido? | `router.lanIp === lanIp` y el rango coincide, dentro de la subred de `lanIp` y sin incluir al router (las reglas de `setDhcpRange`) |
+| `device-named` `{ deviceId, name }` | ¿Ese dispositivo se llama así? | `device.name === name` |
+
+**S74 — Dos niveles nuevos de configuración, sin tocar los ocho de S72.** Decisión del usuario: «Pero sería crear desafíos nuevos, no sobre los ya existentes». Los niveles 1–8 no se modifican; el selector pasa a diez tarjetas y todo lo que era «el último nivel» pasa a mirar el orden, no la posición fija.
+
+| # | Nivel | Situación inicial | Objetivos |
+| --- | --- | --- | --- |
+| 9 | La red del otro aula | Un aula funcionando en 192.168.1.x (router, switch, dos PCs, un portátil) | La red del router pasa a 192.168.5.1 con su rango DHCP válido, y el portátil navega con exactamente 192.168.5.10 y puerta de enlace 192.168.5.1 |
+| 10 | El aula rotulada | Un aula funcionando con los nombres por defecto | El router se llama `Router-2B` y el PC del docente, `PC-Docente` |
+
+No objetivos de la extensión: no se piden direcciones MAC, ni SSID concretos, ni se modifica el nivel de ningún objetivo existente.
+
+
 **No objetivos de v1.** Candados ni progresión bloqueada (los niega S67). Registro, cuentas ni progreso en servidor. Niveles autoría del docente con enlace compartible (futuro: el formato de caso ya viaja; falta la pieza «objetivo»). Segunda subred o routers múltiples. Pistas graduadas y predicción del diagnóstico (opción 2, otro tramo). Informe del alumno (opción 3, otro tramo).
 
 ## Tasks
@@ -55,6 +74,9 @@ Los niveles 1–4 son de cable y topología (ESO); 5–8 agregan direccionamient
 | T5 — Botón «Desafíos», selector de niveles y entrada con confirmación | S67 | inline | 6898194 |
 | T6 — Panel de objetivos vivo, banner de superado y siguiente nivel | S69 | inline | 6898194 |
 | T7 — Modo libre intacto: prueba diferencial del arranque y del flujo libre, docs y cierre | S70 | inline | 4fe1653 |
+| T8 — Tres tipos de objetivo de configuración y los niveles 9 y 10 como datos, con tests | S73, S74 | worker | |
+| T9 — Catálogos es/en: frases de objetivo y niveles 9–10 | S71 | worker | |
+| T10 — Panel de objetivos con frases parametrizadas, «último nivel» por orden, README y suite | S74 | worker | |
 
 Entrega: rama `feat/desafios`, tramos de PR de ~400 líneas revisables contra `origin/main`, mismo flujo que «Casos».
 
@@ -79,3 +101,6 @@ Entrega: rama `feat/desafios`, tramos de PR de ~400 líneas revisables contra `o
 **Diferencial del modo libre (S70).** El arranque no cambió y ninguna puerta del editor se tocó: los 414 tests previos pasan sin editar una línea (444 tras T5/T6, 449 tras T7), incluidos los de arranque, importación y casos; el botón nuevo vive en el grupo «Laboratorio» sin entrar al grupo «Caso» (prueba del header). Suite final: **449 tests en 35 archivos**, `tsc` limpio, build 100,17 KB gzip.
 
 **Pendiente de revisión nativa:** los cuatro tramos contra `origin/main` (RDD).
+
+
+**L6 — Extensión pedida por el usuario: configuración concreta en desafíos NUEVOS (verbatim).** «Aparte de desafíos de conexión de cables, hay desafíos que configuración de equipos? De pedir nombres y direcciones Ip concretas» y, al elegir opción: «Pero sería crear desafíos nuevos, no sobre los ya existentes». Se extiende la feature con S73 (tres tipos de objetivo) y S74 (niveles 9 y 10), sin tocar S72.

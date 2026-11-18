@@ -12,7 +12,16 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App';
 import { encodeCase, type CaseMeta } from '../../domain/case';
-import { addDevice, connectWifi, createLab, setAddressing, type Lab } from '../../domain/lab';
+import {
+  addDevice,
+  connectWifi,
+  createLab,
+  renameDevice,
+  setAddressing,
+  setDhcpRange,
+  setRouterLanIp,
+  type Lab,
+} from '../../domain/lab';
 import { LEVELS, type Level } from '../../domain/levels';
 import type { Result } from '../../domain/types';
 import { ES } from '../../i18n/es';
@@ -40,6 +49,27 @@ function levelOf(id: string): Level {
   const found = LEVELS.find((level) => level.id === id);
   if (found === undefined) throw new Error(`there is no level ${id}`);
   return found;
+}
+
+/** Level 9 solved with the plain mutators: the other network and the exact address (S74). */
+function solvedLevel9(): Lab {
+  const level = levelOf('la-red-del-otro-aula');
+  const moved = unwrap(setRouterLanIp(level.startLab, '192.168.5.1'));
+  const ranged = unwrap(setDhcpRange(moved, 100, 200));
+  return unwrap(
+    setAddressing(ranged, idOf(level.startLab, 'Laptop-1'), {
+      mode: 'manual',
+      manualIp: '192.168.5.10',
+      manualGateway: '192.168.5.1',
+    }),
+  );
+}
+
+/** Level 10 solved with the plain mutator: the two devices carry the names it asks for (S74). */
+function solvedLevel10(): Lab {
+  const level = levelOf('el-aula-rotulada');
+  const router = unwrap(renameDevice(level.startLab, idOf(level.startLab, 'Router'), 'Router-2B'));
+  return unwrap(renameDevice(router, idOf(level.startLab, 'PC-1'), 'PC-Docente'));
 }
 
 /** Work of the student's own: entering a level would replace it (S68, S55). */
@@ -102,6 +132,27 @@ function onlineSentence(name: string): string {
 /** The goal sentence of a manual-address goal, with the current name (S71). */
 function manualSentence(name: string): string {
   return ES['levels.goalManualOnline'].replace('{name}', name);
+}
+
+/** The goal sentence of an exact-address goal, with the current name and its two values (S73). */
+function addressSentence(name: string, ip: string, gateway: string): string {
+  return ES['levels.goalAddressIs']
+    .replace('{name}', name)
+    .replace('{ip}', ip)
+    .replace('{gateway}', gateway);
+}
+
+/** The goal sentence of the router network and its DHCP range (S73). */
+function routerNetworkSentence(ip: string, start: number, end: number): string {
+  return ES['levels.goalRouterNetwork']
+    .replace('{ip}', ip)
+    .replace('{start}', String(start))
+    .replace('{end}', String(end));
+}
+
+/** The goal sentence of a renaming goal: the name now and the one the level asks for (S73). */
+function namedSentence(name: string, target: string): string {
+  return ES['levels.goalDeviceNamed'].replace('{name}', name).replace('{target}', target);
 }
 
 /** Opens the selector from the header and enters one level by its title (S67, S68). */
@@ -392,9 +443,9 @@ describe('GoalsPanel: the goals follow the lab (S69)', () => {
     expect(onCompleted).toHaveBeenCalledTimes(1);
   });
 
-  it('offers going back to the selector instead of a next level on the eighth (S69)', () => {
-    const level = levelOf('reparto-de-direcciones');
-    renderPanel(level, fixedLevel8(), null);
+  it('offers going back to the selector instead of a next level on the tenth (S69, S74)', () => {
+    const level = levelOf('el-aula-rotulada');
+    renderPanel(level, solvedLevel10(), null);
 
     expect(within(goalsPanel()).getByText(ES['levels.finishedAll'])).not.toBeNull();
     expect(
@@ -438,6 +489,95 @@ describe('GoalsPanel: the goals follow the lab (S69)', () => {
     expect(metOf(onlineSentence('PC-1'))).toBe('false');
     expect(metOf(onlineSentence('PC-2'))).toBe('false');
     expect(metOf(onlineSentence('PC-3'))).toBe('false');
+  });
+});
+
+describe('the goals of S74 in the panel (S73, S74)', () => {
+  function renderPanel(level: Level, lab: Lab) {
+    const result = render(
+      <LanguageProvider>
+        <GoalsPanel
+          level={level}
+          lab={lab}
+          onNext={vi.fn()}
+          onBackToLevels={vi.fn()}
+          onCompleted={vi.fn()}
+        />
+      </LanguageProvider>,
+    );
+    return {
+      rerender: (nextLab: Lab) =>
+        result.rerender(
+          <LanguageProvider>
+            <GoalsPanel
+              level={level}
+              lab={nextLab}
+              onNext={vi.fn()}
+              onBackToLevels={vi.fn()}
+              onCompleted={vi.fn()}
+            />
+          </LanguageProvider>,
+        ),
+    };
+  }
+
+  /** The lab of level 9 with its router moved, as `setRouterLanIp` + `setDhcpRange` leave it. */
+  function level9Network(): Lab {
+    const level = levelOf('la-red-del-otro-aula');
+    return unwrap(setDhcpRange(unwrap(setRouterLanIp(level.startLab, '192.168.5.1')), 100, 200));
+  }
+
+  it('writes the network and the exact address of level 9, red at the start', () => {
+    const level = levelOf('la-red-del-otro-aula');
+    renderPanel(level, level.startLab);
+
+    expect(within(goalsPanel()).getAllByRole('listitem')).toHaveLength(2);
+    expect(metOf(routerNetworkSentence('192.168.5.1', 100, 200))).toBe('false');
+    expect(metOf(addressSentence('Laptop-1', '192.168.5.10', '192.168.5.1'))).toBe('false');
+  });
+
+  it('turns both goals of level 9 green as the lab changes', () => {
+    const level = levelOf('la-red-del-otro-aula');
+    const { rerender } = renderPanel(level, level.startLab);
+
+    // Only the network: one goal green, the address still red.
+    rerender(level9Network());
+    expect(metOf(routerNetworkSentence('192.168.5.1', 100, 200))).toBe('true');
+    expect(metOf(addressSentence('Laptop-1', '192.168.5.10', '192.168.5.1'))).toBe('false');
+
+    rerender(solvedLevel9());
+    expect(metOf(addressSentence('Laptop-1', '192.168.5.10', '192.168.5.1'))).toBe('true');
+    expect(within(goalsPanel()).getByRole('status').textContent).toBe(ES['levels.done']);
+  });
+
+  it('says the current name of every device of level 10 and the one it asks for', () => {
+    const level = levelOf('el-aula-rotulada');
+    const { rerender } = renderPanel(level, level.startLab);
+
+    expect(within(goalsPanel()).getAllByRole('listitem')).toHaveLength(2);
+    expect(metOf(namedSentence('Router', 'Router-2B'))).toBe('false');
+    expect(metOf(namedSentence('PC-1', 'PC-Docente'))).toBe('false');
+
+    // Renaming the router renames the line: the sentence reads the lab of the moment (S69).
+    const renamed = unwrap(renameDevice(level.startLab, idOf(level.startLab, 'Router'), 'Router-2B'));
+    rerender(renamed);
+    expect(metOf(namedSentence('Router-2B', 'Router-2B'))).toBe('true');
+    expect(metOf(namedSentence('PC-1', 'PC-Docente'))).toBe('false');
+
+    rerender(solvedLevel10());
+    expect(within(goalsPanel()).getByRole('status').textContent).toBe(ES['levels.done']);
+  });
+
+  it('announces the new goal kinds with their sentence and their state (S69, S73)', () => {
+    const level = levelOf('la-red-del-otro-aula');
+    const { rerender } = renderPanel(level, level.startLab);
+
+    const network = routerNetworkSentence('192.168.5.1', 100, 200);
+    expect(goalAnnouncement(network, ES['levels.goalPending'])).not.toBeNull();
+
+    rerender(solvedLevel9());
+    expect(goalAnnouncement(network, ES['levels.goalMet'])).not.toBeNull();
+    expect(goalAnnouncement(network, ES['levels.goalPending'])).toBeNull();
   });
 });
 
@@ -551,5 +691,74 @@ describe('the free-mode editor is untouched (S70)', () => {
     };
     expect(stored.version).toBe(1);
     expect(stored.lab.devices.map((device) => device.name)).toContain('Laptop-1');
+  });
+});
+
+/**
+ * The two levels of S74 driven the way a student drives them (S73, S74): the router and the
+ * laptop fields of the device panel, the name field, and the goals panel that answers.
+ */
+describe('the configuration levels of S74 in the app (S73, S74)', () => {
+  /** Types a value into one field of the device panel and commits it, as a student would. */
+  async function fill(user: ReturnType<typeof userEvent.setup>, label: string, value: string) {
+    const input = screen.getByLabelText(label);
+    await user.clear(input);
+    await user.type(input, `${value}{Enter}`);
+  }
+
+  it('solves level 9 with the router panel and the laptop address, then moves on', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await enterLevel(user, ES['levels.la-red-del-otro-aula.title']);
+    const network = routerNetworkSentence('192.168.5.1', 100, 200);
+    const address = addressSentence('Laptop-1', '192.168.5.10', '192.168.5.1');
+    expect(metOf(network)).toBe('false');
+    expect(metOf(address)).toBe('false');
+
+    selectDevice('Router');
+    await fill(user, ES['field.routerLanIp'], '192.168.5.1');
+    await fill(user, ES['field.dhcpStart'], '100');
+    await fill(user, ES['field.dhcpEnd'], '200');
+    expect(metOf(network)).toBe('true');
+    expect(metOf(address)).toBe('false');
+
+    selectDevice('Laptop-1');
+    await fill(user, ES['field.manualIp'], '192.168.5.10');
+    await fill(user, ES['field.gateway'], '192.168.5.1');
+
+    expect(metOf(address)).toBe('true');
+    expect(statusBanner()?.textContent).toBe(ES['levels.done']);
+
+    // The walk goes on to the tenth level, which is the next one by `order`.
+    await user.click(screen.getByRole('button', { name: ES['levels.next'] }));
+    expect(
+      within(goalsPanel()).getByRole('heading', { name: ES['levels.el-aula-rotulada.title'] }),
+    ).not.toBeNull();
+    expect(loadLevelProgress().ultimo).toBe('el-aula-rotulada');
+  });
+
+  it('solves level 10 by renaming two devices, and ends the walk there', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await enterLevel(user, ES['levels.el-aula-rotulada.title']);
+    expect(metOf(namedSentence('Router', 'Router-2B'))).toBe('false');
+    expect(metOf(namedSentence('PC-1', 'PC-Docente'))).toBe('false');
+
+    selectDevice('Router');
+    await fill(user, ES['field.name'], 'Router-2B');
+    expect(metOf(namedSentence('Router-2B', 'Router-2B'))).toBe('true');
+
+    selectDevice('PC-1');
+    await fill(user, ES['field.name'], 'PC-Docente');
+
+    expect(within(goalsPanel()).getByRole('status').textContent).toBe(ES['levels.done']);
+    // The last level of the walk is the one with the highest order: only going back is offered.
+    expect(within(goalsPanel()).getByText(ES['levels.finishedAll'])).not.toBeNull();
+    expect(within(goalsPanel()).queryByRole('button', { name: ES['levels.next'] })).toBeNull();
+    expect(
+      within(goalsPanel()).getByRole('button', { name: ES['levels.backToLevels'] }),
+    ).not.toBeNull();
   });
 });

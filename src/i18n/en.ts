@@ -146,7 +146,7 @@ export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'send.unknownDestination': 'the destination',
 
   // Levels (S71): the «Desafíos» entry, its selector, the goal panel and its banner, then the
-  // eight levels of S72 with one title and one brief each. The two goal lines are templates:
+  // ten levels of S72 and S74 with one title and one brief each. The goal lines are templates:
   // the panel fills `{name}` with the device the level asks about.
   'levels.action': 'Challenges',
   'levels.selectorTitle': 'Challenges',
@@ -155,6 +155,10 @@ export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'levels.completedBadge': 'Completed',
   'levels.goalOnline': '{name} reaches the Internet',
   'levels.goalManualOnline': '{name} browses with its manual IP',
+  // S73: the three goals of concrete configuration, with the parameters the panel fills in.
+  'levels.goalAddressIs': '{name} browses with exactly the IP {ip} and the gateway {gateway}',
+  'levels.goalRouterNetwork': 'The router network is {ip} and its DHCP range runs from {start} to {end}',
+  'levels.goalDeviceNamed': '{name} is renamed to {target}',
   // The state of a goal, said out loud: colour alone never reaches a screen reader (S69).
   'levels.goalMet': 'Done',
   'levels.goalPending': 'Pending',
@@ -188,6 +192,13 @@ export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'levels.reparto-de-direcciones.title': 'Sharing out the addresses',
   'levels.reparto-de-direcciones.brief':
     'Two laptops with manual IPs on the wrong networks and a phone that has not joined. Fix all three.',
+
+  'levels.la-red-del-otro-aula.title': 'The other classroom network',
+  'levels.la-red-del-otro-aula.brief':
+    'The classroom next door uses another network: move the router to 192.168.5.1, set its DHCP range from 100 to 200 and give the laptop exactly 192.168.5.10.',
+  'levels.el-aula-rotulada.title': 'The labelled classroom',
+  'levels.el-aula-rotulada.brief':
+    'Before sharing the network, give everything a name of its own: the router must be called Router-2B and the teacher PC, PC-Docente.',
 
   // Domain diagnostics (S22)
   'ethernet-disabled': 'Ethernet is switched off on this device.',

@@ -145,6 +145,9 @@ export type UiKey =
   | 'levels.completedBadge'
   | 'levels.goalOnline'
   | 'levels.goalManualOnline'
+  | 'levels.goalAddressIs'
+  | 'levels.goalRouterNetwork'
+  | 'levels.goalDeviceNamed'
   | 'levels.goalMet'
   | 'levels.goalPending'
   | 'levels.panelTitle'
@@ -152,7 +155,7 @@ export type UiKey =
   | 'levels.next'
   | 'levels.backToLevels'
   | 'levels.finishedAll'
-  // The eight levels of S72, one title for the selector card and one brief for the panel each.
+  // The ten levels, one title for the selector card and one brief for the panel each.
   | 'levels.enchufa-portatil.title'
   | 'levels.enchufa-portatil.brief'
   | 'levels.falta-cable-internet.title'
@@ -168,7 +171,12 @@ export type UiKey =
   | 'levels.monta-el-aula.title'
   | 'levels.monta-el-aula.brief'
   | 'levels.reparto-de-direcciones.title'
-  | 'levels.reparto-de-direcciones.brief';
+  | 'levels.reparto-de-direcciones.brief'
+  // The two levels of S74, added after the eight of S72 and leaving them untouched.
+  | 'levels.la-red-del-otro-aula.title'
+  | 'levels.la-red-del-otro-aula.brief'
+  | 'levels.el-aula-rotulada.title'
+  | 'levels.el-aula-rotulada.brief';
 
 /** Any key of the catalogue: an interface string, a domain message or a case failure (S57). */
 export type MessageKey = UiKey | DomainMessageCode | CaseMessageCode;

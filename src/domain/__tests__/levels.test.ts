@@ -9,7 +9,10 @@ import {
   addDevice,
   connectCable,
   createLab,
+  renameDevice,
   setAddressing,
+  setDhcpRange,
+  setRouterLanIp,
   type Lab,
   type Result,
 } from '../lab';
@@ -29,6 +32,23 @@ function idOf(lab: Lab, name: string): string {
 
 function online(deviceId: string): Goal {
   return { kind: 'online', deviceId };
+}
+
+/** The example lab with one device on a manual address the caller chooses. */
+function manualAddress(name: string, ip: string, gateway: string): Lab {
+  const lab = createExampleLab();
+  return unwrap(
+    setAddressing(lab, idOf(lab, name), { mode: 'manual', manualIp: ip, manualGateway: gateway }),
+  );
+}
+
+/**
+ * A router state the mutators would refuse: the point of these fixtures is that a level which
+ * asks for an invalid range stays red even when the stored numbers happen to match (S73).
+ */
+function storedRange(lab: Lab, lanIp: string, start: number, end: number): Lab {
+  if (!lab.router) throw new Error('the fixture has no router');
+  return { ...lab, router: { ...lab.router, lanIp, dhcpStart: start, dhcpEnd: end } };
 }
 
 describe('evaluateGoals', () => {
@@ -152,5 +172,211 @@ describe('isLevelComplete', () => {
 
     // The curriculum cannot ask for this mistake because the student cannot make it (L3).
     expect(miswire.ok).toBe(false);
+  });
+});
+
+describe('address-is goals (S73)', () => {
+  it('is met with exactly that manual address and that gateway', () => {
+    const lab = manualAddress('Laptop-1', '192.168.1.50', '192.168.1.1');
+
+    const states = evaluateGoals(lab, [
+      { kind: 'address-is', deviceId: idOf(lab, 'Laptop-1'), ip: '192.168.1.50', gateway: '192.168.1.1' },
+    ]);
+
+    expect(states[0].met).toBe(true);
+  });
+
+  it('is not met while the address is another one, even inside the network', () => {
+    const lab = manualAddress('Laptop-1', '192.168.1.50', '192.168.1.1');
+
+    const states = evaluateGoals(lab, [
+      { kind: 'address-is', deviceId: idOf(lab, 'Laptop-1'), ip: '192.168.1.77', gateway: '192.168.1.1' },
+    ]);
+
+    expect(states[0].met).toBe(false);
+  });
+
+  it('is not met while the gateway is another one', () => {
+    const lab = manualAddress('Laptop-1', '192.168.1.50', '192.168.1.1');
+
+    const states = evaluateGoals(lab, [
+      { kind: 'address-is', deviceId: idOf(lab, 'Laptop-1'), ip: '192.168.1.50', gateway: '192.168.1.254' },
+    ]);
+
+    expect(states[0].met).toBe(false);
+  });
+
+  it('is not met by DHCP, even when the device is online with the address the goal asks for', () => {
+    const lab = createExampleLab();
+
+    const states = evaluateGoals(lab, [
+      { kind: 'address-is', deviceId: idOf(lab, 'Laptop-2'), ip: '192.168.1.2', gateway: '192.168.1.1' },
+    ]);
+
+    expect(states[0].met).toBe(false);
+  });
+
+  it('fails an address-is goal whose device does not exist, instead of throwing', () => {
+    const lab = createExampleLab();
+    const goal: Goal = { kind: 'address-is', deviceId: 'no-such-device', ip: '192.168.1.10', gateway: '192.168.1.1' };
+
+    expect(evaluateGoals(lab, [goal])).toEqual([{ goal, met: false }]);
+  });
+});
+
+describe('router-network goals (S73)', () => {
+  it('is met when the router has that network and that DHCP range', () => {
+    const lab = createExampleLab();
+
+    const states = evaluateGoals(lab, [
+      { kind: 'router-network', lanIp: '192.168.1.1', dhcpStart: 2, dhcpEnd: 100 },
+    ]);
+
+    expect(states[0].met).toBe(true);
+  });
+
+  it('is met with the range a level asks for, once it is set with the domain mutators', () => {
+    const lab = createExampleLab();
+    const moved = unwrap(setRouterLanIp(lab, '192.168.5.1'));
+    const ranged = unwrap(setDhcpRange(moved, 100, 200));
+
+    const states = evaluateGoals(ranged, [
+      { kind: 'router-network', lanIp: '192.168.5.1', dhcpStart: 100, dhcpEnd: 200 },
+    ]);
+
+    expect(states[0].met).toBe(true);
+  });
+
+  it('is not met while the network of the router is another one', () => {
+    const lab = createExampleLab();
+
+    const states = evaluateGoals(lab, [
+      { kind: 'router-network', lanIp: '192.168.5.1', dhcpStart: 2, dhcpEnd: 100 },
+    ]);
+
+    expect(states[0].met).toBe(false);
+  });
+
+  it('is not met while the DHCP range is another one', () => {
+    const lab = createExampleLab();
+
+    const states = evaluateGoals(lab, [
+      { kind: 'router-network', lanIp: '192.168.1.1', dhcpStart: 100, dhcpEnd: 200 },
+    ]);
+
+    expect(states[0].met).toBe(false);
+  });
+
+  it('is not met by a range that includes the router own address, even if the numbers match', () => {
+    const lab = storedRange(createExampleLab(), '192.168.1.50', 50, 100);
+
+    const states = evaluateGoals(lab, [
+      { kind: 'router-network', lanIp: '192.168.1.50', dhcpStart: 50, dhcpEnd: 100 },
+    ]);
+
+    expect(states[0].met).toBe(false);
+  });
+
+  it('is not met by an inverted range, even if the numbers match', () => {
+    const lab = storedRange(createExampleLab(), '192.168.1.1', 100, 50);
+
+    const states = evaluateGoals(lab, [
+      { kind: 'router-network', lanIp: '192.168.1.1', dhcpStart: 100, dhcpEnd: 50 },
+    ]);
+
+    expect(states[0].met).toBe(false);
+  });
+
+  it('is not met by the network or the broadcast address of the subnet', () => {
+    // Neither a range from .0 nor one that ends in .255 is a range of usable hosts.
+    const fromZero = storedRange(createExampleLab(), '192.168.1.1', 0, 100);
+    const toBroadcast = storedRange(createExampleLab(), '192.168.1.1', 100, 255);
+
+    expect(
+      evaluateGoals(fromZero, [{ kind: 'router-network', lanIp: '192.168.1.1', dhcpStart: 0, dhcpEnd: 100 }])[0].met,
+    ).toBe(false);
+    expect(
+      evaluateGoals(toBroadcast, [
+        { kind: 'router-network', lanIp: '192.168.1.1', dhcpStart: 100, dhcpEnd: 255 },
+      ])[0].met,
+    ).toBe(false);
+  });
+
+  it('is not met when the lab has no router at all', () => {
+    const states = evaluateGoals(createLab(), [
+      { kind: 'router-network', lanIp: '192.168.1.1', dhcpStart: 2, dhcpEnd: 100 },
+    ]);
+
+    expect(states[0].met).toBe(false);
+  });
+});
+
+describe('device-named goals (S73)', () => {
+  it('is met when the device has exactly that name', () => {
+    const lab = createExampleLab();
+    const renamed = unwrap(renameDevice(lab, idOf(lab, 'Laptop-1'), 'Laptop-Docente'));
+
+    const states = evaluateGoals(renamed, [
+      { kind: 'device-named', deviceId: idOf(lab, 'Laptop-1'), name: 'Laptop-Docente' },
+    ]);
+
+    expect(states[0].met).toBe(true);
+  });
+
+  it('is not met with the default name of the device', () => {
+    const lab = createExampleLab();
+
+    const states = evaluateGoals(lab, [
+      { kind: 'device-named', deviceId: idOf(lab, 'Laptop-1'), name: 'Laptop-Docente' },
+    ]);
+
+    expect(states[0].met).toBe(false);
+  });
+
+  it('is not met by another name that only differs in case', () => {
+    const lab = createExampleLab();
+    const renamed = unwrap(renameDevice(lab, idOf(lab, 'Laptop-1'), 'Laptop-Docente'));
+
+    const states = evaluateGoals(renamed, [
+      { kind: 'device-named', deviceId: idOf(lab, 'Laptop-1'), name: 'laptop-docente' },
+    ]);
+
+    expect(states[0].met).toBe(false);
+  });
+
+  it('fails a device-named goal whose device does not exist, instead of throwing', () => {
+    const lab = createExampleLab();
+    const goal: Goal = { kind: 'device-named', deviceId: 'no-such-device', name: 'Laptop-Docente' };
+
+    expect(evaluateGoals(lab, [goal])).toEqual([{ goal, met: false }]);
+  });
+});
+
+describe('evaluating the new goal kinds (S73)', () => {
+  it('does not touch the lab it evaluates', () => {
+    const lab = manualAddress('Laptop-1', '192.168.1.50', '192.168.1.1');
+    const before = structuredClone(lab);
+
+    evaluateGoals(lab, [
+      { kind: 'address-is', deviceId: idOf(lab, 'Laptop-1'), ip: '192.168.1.50', gateway: '192.168.1.1' },
+      { kind: 'router-network', lanIp: '192.168.1.1', dhcpStart: 2, dhcpEnd: 100 },
+      { kind: 'device-named', deviceId: idOf(lab, 'Laptop-1'), name: 'Laptop-1' },
+    ]);
+
+    expect(lab).toEqual(before);
+  });
+
+  it('answers one state per goal, in the order they were given', () => {
+    const lab = manualAddress('Laptop-1', '192.168.1.50', '192.168.1.1');
+    const goals: Goal[] = [
+      { kind: 'router-network', lanIp: '192.168.1.1', dhcpStart: 2, dhcpEnd: 100 },
+      { kind: 'device-named', deviceId: idOf(lab, 'Laptop-1'), name: 'Laptop-1' },
+      { kind: 'address-is', deviceId: idOf(lab, 'Laptop-1'), ip: '192.168.1.50', gateway: '192.168.1.1' },
+    ];
+
+    const states = evaluateGoals(lab, goals);
+
+    expect(states.map((state) => state.goal)).toEqual(goals);
+    expect(states.map((state) => state.met)).toEqual([true, true, true]);
   });
 });

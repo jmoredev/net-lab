@@ -151,7 +151,7 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'send.unknownDestination': 'el destino',
 
   // Levels (S71): the «Desafíos» entry, its selector, the goal panel and its banner, then the
-  // eight levels of S72 with one title and one brief each. The two goal lines are templates:
+  // ten levels of S72 and S74 with one title and one brief each. The goal lines are templates:
   // the panel fills `{name}` with the device the level asks about.
   'levels.action': 'Desafíos',
   'levels.selectorTitle': 'Desafíos',
@@ -160,6 +160,10 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'levels.completedBadge': 'Superado',
   'levels.goalOnline': '{name} llega a Internet',
   'levels.goalManualOnline': '{name} navega con su IP manual',
+  // S73: los tres objetivos de configuración concreta, con los parámetros que el panel rellena.
+  'levels.goalAddressIs': '{name} navega exactamente con la IP {ip} y puerta de enlace {gateway}',
+  'levels.goalRouterNetwork': 'La red del router es {ip} y su rango DHCP va de {start} a {end}',
+  'levels.goalDeviceNamed': '{name} pasa a llamarse {target}',
   // The state of a goal, said out loud: colour alone never reaches a screen reader (S69).
   'levels.goalMet': 'Conseguido',
   'levels.goalPending': 'Pendiente',
@@ -193,6 +197,13 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'levels.reparto-de-direcciones.title': 'El reparto de direcciones',
   'levels.reparto-de-direcciones.brief':
     'Dos portátiles con IP manual en redes equivocadas y un móvil sin unirse. Arregla los tres.',
+
+  'levels.la-red-del-otro-aula.title': 'La red del otro aula',
+  'levels.la-red-del-otro-aula.brief':
+    'El aula de al lado usa otra red: pasa el router a 192.168.5.1, ajusta su rango DHCP de la 100 a la 200 y dale al portátil exactamente la 192.168.5.10.',
+  'levels.el-aula-rotulada.title': 'El aula rotulada',
+  'levels.el-aula-rotulada.brief':
+    'Antes de compartir la red, pon nombres propios: el router debe llamarse Router-2B y el PC del docente, PC-Docente.',
 
   // Domain diagnostics (S22): the eleven rows of the diagnosis table.
   'ethernet-disabled': 'La conexión Ethernet está desactivada en este dispositivo.',

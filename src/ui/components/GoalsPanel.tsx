@@ -1,8 +1,40 @@
 import { useEffect, useRef } from 'react';
 import type { Lab } from '../../domain/lab';
-import { evaluateGoals, isLevelComplete, type Level } from '../../domain/levels';
+import { evaluateGoals, isLevelComplete, type Goal, type Level } from '../../domain/levels';
 import { useI18n } from '../../i18n/LanguageProvider';
+import type { MessageKey, MessageParams } from '../../i18n/types';
 import { levelTextKey } from './LevelsDialog';
+
+/**
+ * The catalogue sentence of one goal, with the name the device has right now (S69, S73).
+ *
+ * Every kind resolves its own template: the two connectivity goals and the exact address
+ * name a device, the router goal names a network and its range, and the naming goal says the
+ * current name and the one the level asks for. A goal whose device is gone falls back to the
+ * unknown-device word, so a broken level reads as a sentence and never as a crash.
+ */
+function goalSentence(
+  t: (key: MessageKey, params?: MessageParams) => string,
+  goal: Goal,
+  currentName: string,
+): string {
+  switch (goal.kind) {
+    case 'online':
+      return t('levels.goalOnline', { name: currentName });
+    case 'manual-online':
+      return t('levels.goalManualOnline', { name: currentName });
+    case 'address-is':
+      return t('levels.goalAddressIs', { name: currentName, ip: goal.ip, gateway: goal.gateway });
+    case 'router-network':
+      return t('levels.goalRouterNetwork', {
+        ip: goal.lanIp,
+        start: goal.dhcpStart,
+        end: goal.dhcpEnd,
+      });
+    case 'device-named':
+      return t('levels.goalDeviceNamed', { name: currentName, target: goal.name });
+  }
+}
 
 export interface GoalsPanelProps {
   level: Level;
@@ -49,12 +81,12 @@ export function GoalsPanel({ level, lab, onNext, onBackToLevels, onCompleted }: 
       <ul className="goals__list">
         {states.map((state, index) => {
           // The name is the one the lab shows now: renaming a device renames the goal (S69).
-          const device = lab.devices.find((candidate) => candidate.id === state.goal.deviceId);
+          // The router goal is about the lab, so it has no device and no name to resolve.
+          const deviceId = 'deviceId' in state.goal ? state.goal.deviceId : null;
+          const device =
+            deviceId === null ? undefined : lab.devices.find((candidate) => candidate.id === deviceId);
           const name = device?.name ?? t('canvas.unknownDevice');
-          const sentence =
-            state.goal.kind === 'online'
-              ? t('levels.goalOnline', { name })
-              : t('levels.goalManualOnline', { name });
+          const sentence = goalSentence(t, state.goal, name);
           const stateWord = t(state.met ? 'levels.goalMet' : 'levels.goalPending');
           return (
             <li

@@ -1,8 +1,8 @@
 /**
- * The eight levels as data (S72): every level starts with every goal unmet, is solvable
- * with the plain domain mutators — the same ones the student has —, cannot be dodged
- * with DHCP where it teaches manual addressing, and round-trips through the case
- * codec without being healed, so a level is a lab like any other (S70).
+ * The ten levels as data (S72, S74): every level starts with every goal unmet, is solvable
+ * with the plain domain mutators — the same ones the student has —, cannot be dodged with DHCP
+ * where it teaches manual addressing, and round-trips through the case codec without being
+ * healed, so a level is a lab like any other (S70).
  */
 import { describe, expect, it } from 'vitest';
 import { decodeCase, encodeCase, type CaseData } from '../case';
@@ -11,7 +11,10 @@ import {
   INTERNET_ID,
   connectCable,
   connectWifi,
+  renameDevice,
   setAddressing,
+  setDhcpRange,
+  setRouterLanIp,
   setWifiEnabled,
   type Lab,
   type Result,
@@ -35,11 +38,11 @@ function level(id: string): Level {
   return found;
 }
 
-describe('the eight levels (S72)', () => {
-  it('has eight levels with unique ids and orders one to eight', () => {
-    expect(LEVELS).toHaveLength(8);
-    expect(new Set(LEVELS.map((entry) => entry.id)).size).toBe(8);
-    expect(LEVELS.map((entry) => entry.order)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+describe('the ten levels (S72, S74)', () => {
+  it('has ten levels with unique ids and orders one to ten', () => {
+    expect(LEVELS).toHaveLength(10);
+    expect(new Set(LEVELS.map((entry) => entry.id)).size).toBe(10);
+    expect(LEVELS.map((entry) => entry.order)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
   });
 
   it('starts with every goal unmet in every level', () => {
@@ -47,6 +50,20 @@ describe('the eight levels (S72)', () => {
       const states = evaluateGoals(entry.startLab, entry.goals);
       expect(states.some((state) => state.met), entry.id).toBe(false);
       expect(isLevelComplete(states), entry.id).toBe(false);
+    }
+  });
+
+  it('starts the two levels of S74 with a classroom that already works', () => {
+    // Level 9 and 10 ask for a configuration, not for a cable: nothing is broken in them, so
+    // every client of the start lab reaches the Internet and only the goals are red (S74).
+    for (const id of ['la-red-del-otro-aula', 'el-aula-rotulada']) {
+      const start = level(id).startLab;
+      const statuses = computeStatus(start);
+      for (const device of start.devices) {
+        if (device.kind === 'laptop' || device.kind === 'desktop') {
+          expect(statuses[device.id]?.hasInternet, `${id}: ${device.name}`).toBe(true);
+        }
+      }
     }
   });
 
@@ -59,6 +76,8 @@ describe('the eight levels (S72)', () => {
     expect(isLevelComplete(evaluateGoals(solveLevel6(), level('lio-de-cables').goals))).toBe(true);
     expect(isLevelComplete(evaluateGoals(solveLevel7(), level('monta-el-aula').goals))).toBe(true);
     expect(isLevelComplete(evaluateGoals(solveLevel8(), level('reparto-de-direcciones').goals))).toBe(true);
+    expect(isLevelComplete(evaluateGoals(solveLevel9(), level('la-red-del-otro-aula').goals))).toBe(true);
+    expect(isLevelComplete(evaluateGoals(solveLevel10(), level('el-aula-rotulada').goals))).toBe(true);
   });
 
   it('does not let DHCP dodge the levels that teach manual addressing', () => {
@@ -71,6 +90,14 @@ describe('the eight levels (S72)', () => {
     const dodgedFirst = unwrap(setAddressing(eighth.startLab, idOf(eighth.startLab, 'Laptop-1'), { mode: 'dhcp' }));
     const eighthStates = evaluateGoals(dodgedFirst, eighth.goals);
     expect(eighthStates[0].met).toBe(false);
+
+    // Level 9 asks for one exact address too, so automatic addressing is not an answer (S73).
+    const ninth = level('la-red-del-otro-aula');
+    const moved = unwrap(setRouterLanIp(ninth.startLab, '192.168.5.1'));
+    const ranged = unwrap(setDhcpRange(moved, 100, 200));
+    const dodgedNinth = unwrap(setAddressing(ranged, idOf(ninth.startLab, 'Laptop-1'), { mode: 'dhcp' }));
+    const ninthStates = evaluateGoals(dodgedNinth, ninth.goals);
+    expect(ninthStates[1].met).toBe(false);
   });
 
   it('round-trips every start lab through the case codec without healing it', () => {
@@ -83,10 +110,15 @@ describe('the eight levels (S72)', () => {
       if (!decoded.ok) continue;
 
       expect(decoded.data.lab.devices, entry.id).toHaveLength(entry.startLab.devices.length);
+      // The codec carries the lab as it is: a broken level stays broken and a working one —
+      // level 9 and 10 start with their classroom running — stays working (S70, S74).
+      const before = computeStatus(entry.startLab);
       const statuses = computeStatus(decoded.data.lab);
       for (const device of decoded.data.lab.devices) {
         if (device.kind === 'laptop' || device.kind === 'desktop' || device.kind === 'phone') {
-          expect(statuses[device.id]?.hasInternet, `${entry.id}: ${device.name}`).toBe(false);
+          expect(Boolean(statuses[device.id]?.hasInternet), `${entry.id}: ${device.name}`).toBe(
+            Boolean(before[device.id]?.hasInternet),
+          );
         }
       }
     }
@@ -181,4 +213,25 @@ function solveLevel8(): Lab {
     setAddressing(first, idOf(start, 'Laptop-2'), { mode: 'manual', manualIp: '192.168.1.60', manualGateway: '192.168.1.1' }),
   );
   return unwrap(connectWifi(second, idOf(start, 'Smartphone-1'), true));
+}
+
+/** Level 9: the other classroom network, and the laptop on the exact address it asks for. */
+function solveLevel9(): Lab {
+  const start = level('la-red-del-otro-aula').startLab;
+  const moved = unwrap(setRouterLanIp(start, '192.168.5.1'));
+  const ranged = unwrap(setDhcpRange(moved, 100, 200));
+  return unwrap(
+    setAddressing(ranged, idOf(start, 'Laptop-1'), {
+      mode: 'manual',
+      manualIp: '192.168.5.10',
+      manualGateway: '192.168.5.1',
+    }),
+  );
+}
+
+/** Level 10: two devices labelled the way the classroom asks. */
+function solveLevel10(): Lab {
+  const start = level('el-aula-rotulada').startLab;
+  const router = unwrap(renameDevice(start, idOf(start, 'Router'), 'Router-2B'));
+  return unwrap(renameDevice(router, idOf(start, 'PC-1'), 'PC-Docente'));
 }
