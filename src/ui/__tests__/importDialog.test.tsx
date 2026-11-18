@@ -629,6 +629,33 @@ describe('ImportDialog: one import at a time (S54, S56)', () => {
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
   });
+
+  it('discards a read that outlives its visit when the dialog is reopened', async () => {
+    const encoded = encodedExample();
+    const pending = deferred();
+    const file = new File([''], 'caso.json', { type: 'application/json' });
+    Object.defineProperty(file, 'text', { configurable: true, value: () => pending.promise });
+    const { onImport, setOpen } = renderOpenable(createLab());
+
+    fireEvent.change(fileInput(), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir' }));
+    setOpen(false);
+    setOpen(true);
+
+    // The new visit owes nothing to the old read: Abrir must not stay disabled by it.
+    const open = screen.getByRole('button', { name: 'Abrir' }) as HTMLButtonElement;
+    expect(open.disabled).toBe(false);
+
+    pending.resolve(encoded.json);
+    await act(async () => {
+      await pending.promise;
+    });
+
+    // The read is from the visit that was closed: it applies nothing, not even its failure.
+    expect(onImport).not.toHaveBeenCalled();
+    expect(statusText()).toBe('');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });
 
 describe('ImportDialog: the header button and the atomic load (S56)', () => {

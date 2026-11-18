@@ -53,8 +53,11 @@ export function ImportDialog({ open, lab, onClose, onImport }: ImportDialogProps
   /** True while `File.text()` is in flight: a second click must not start a second import. */
   const [reading, setReading] = useState(false);
   const readingRef = useRef(false);
-  /** The dialog may close while a read is pending, and then its result is stale (S54). */
-  const openRef = useRef(open);
+  /**
+   * Every opening is a new visit, and so is every closing: a read still in flight when its
+   * visit ends is about a dialog that no longer exists, and nothing of it applies (S54).
+   */
+  const visitRef = useRef(0);
 
   /**
    * The hidden `<input type="file">` keeps its last choice and fires no `change` for the same
@@ -70,13 +73,17 @@ export function ImportDialog({ open, lab, onClose, onImport }: ImportDialogProps
     setFile(null);
     setProblem(null);
     setImported(null);
+    // A read of the previous visit is stale: it must not keep Abrir disabled either (S54).
+    readingRef.current = false;
+    setReading(false);
     clearFileChoice();
   }
 
   // The modal itself: `showModal()` when the element has it, the attribute when it does not.
   // The component renders nothing while closed, so nothing of it is ever on screen.
   useEffect(() => {
-    openRef.current = open;
+    // The visit ends here, whatever comes next: a read still in flight dies with the token.
+    visitRef.current += 1;
     if (!open) return;
     const dialog = dialogRef.current;
     if (dialog === null) return;
@@ -123,6 +130,8 @@ export function ImportDialog({ open, lab, onClose, onImport }: ImportDialogProps
       }
       readingRef.current = true;
       setReading(true);
+      // The visit this read belongs to: if the dialog closes and reopens, it is stale (S54).
+      const visit = visitRef.current;
       let content: string | null = null;
       try {
         content = await file.text();
@@ -130,13 +139,16 @@ export function ImportDialog({ open, lab, onClose, onImport }: ImportDialogProps
         // A file the browser refuses to read is text this analyser cannot understand.
         content = null;
       } finally {
-        readingRef.current = false;
-        setReading(false);
+        // Another visit may have started while the file was being read: its state is not ours.
+        if (visit === visitRef.current) {
+          readingRef.current = false;
+          setReading(false);
+        }
       }
       // The file was consumed, whatever the answer: the same path has to be pickable again.
       clearFileChoice();
-      // Closed while reading: the result is about a dialog that is no longer there.
-      if (!openRef.current) return;
+      // The visit ended while the file was being read: this is a dialog that is not this one.
+      if (visit !== visitRef.current) return;
       if (content === null) {
         setProblem({ kind: 'failure', failure: { code: 'formato-invalido' } });
         return;

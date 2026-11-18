@@ -497,3 +497,9 @@ Verificación: `tsc` limpio y **362 tests en verde** en 28 archivos. Nueve prueb
 
 Verificación: `pnpm typecheck` limpio y **386 tests en verde** en 30 archivos, quince nuevos en esta revisión (dos de la paleta, uno del documento indentado, uno del portapapeles heredado, tres de la reapertura, dos de la lectura en curso, dos del `input` de fichero, uno del `.txt` con salto de línea y tres de la comparación). Sin dependencias nuevas.
 
+
+**L15 — El hallazgo abierto del tramo 3, cerrado antes del push.** El hallazgo R3-001/R4-001 de `review-f000ca9cf017c6c4`: `reset()` no limpiaba `reading`/`readingRef`, así que cerrar y reabrir el diálogo con una lectura de fichero en vuelo dejaba «Abrir» deshabilitado y, como la guardia miraba `openRef` —que vuelve a `true` al reabrir—, la lectura vieja se aplicaba igual sobre la visita nueva. Decisión del usuario: «sí, arreglalo».
+
+Se arregló con un token de visita en vez de la guardia suelta: `visitRef` cambia en cada apertura y en cada cierre, `reset()` limpia también el estado de lectura, y la lectura en curso captura su visita —si terminó en otra visita, ni aplica el resultado ni toca el estado de lectura de la que está abierta—. `openRef` desaparece porque el token lo cubre. Test primero, en rojo tal como describía el hallazgo: lectura en vuelo, cerrar, reabrir, «Abrir» sigue deshabilitado y el resultado viejo se aplica; en verde no queda nada de eso.
+
+Verificación: `tsc` limpio y **387 tests en verde** en 30 archivos (uno nuevo), `pnpm build` en verde.
