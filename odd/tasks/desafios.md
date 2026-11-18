@@ -58,6 +58,16 @@ Los niveles 1–4 son de cable y topología (ESO); 5–8 agregan direccionamient
 | 9 | La red del otro aula | Un aula funcionando en 192.168.1.x (router, switch, dos PCs, un portátil) | La red del router pasa a 192.168.5.1 con su rango DHCP válido, y el portátil navega con exactamente 192.168.5.10 y puerta de enlace 192.168.5.1 |
 | 10 | El aula rotulada | Un aula funcionando con los nombres por defecto | El router se llama `Router-2B` y el PC del docente, `PC-Docente` |
 
+**S75 — Cada nivel declara su dificultad, y el color la cuenta.** `Level` gana `difficulty: 'easy' | 'medium' | 'hard'`, fijado por los requisitos que pide superarlo, no por su orden:
+
+| Dificultad | Niveles | Por qué |
+| --- | --- | --- |
+| Fácil (verde) | 1, 2, 3, 10 | Una acción sobre un dispositivo: un cable, otro cable, unirse al WiFi, dos renombres |
+| Medio (naranja) | 4, 6, 7 | Varios dispositivos y topología: cablear el aula, tres fallos mezclados, montar la red completa |
+| Difícil (rojo) | 5, 8, 9 | Direccionamiento: IP manual en la subred correcta, dos direcciones más el móvil, y renumerar la red del router con una IP exacta |
+
+La tarjeta del selector lleva una insignia con la palabra («Fácil», «Medio», «Difícil») y su color; la palabra siempre viaja como texto, el color es refuerzo visual, nunca el único canal. El panel de objetivos muestra la misma insignia junto al título. La dificultad nunca bloquea nada: S67 manda.
+
 No objetivos de la extensión: no se piden direcciones MAC, ni SSID concretos, ni se modifica el nivel de ningún objetivo existente.
 
 
@@ -74,9 +84,10 @@ No objetivos de la extensión: no se piden direcciones MAC, ni SSID concretos, n
 | T5 — Botón «Desafíos», selector de niveles y entrada con confirmación | S67 | inline | 6898194 |
 | T6 — Panel de objetivos vivo, banner de superado y siguiente nivel | S69 | inline | 6898194 |
 | T7 — Modo libre intacto: prueba diferencial del arranque y del flujo libre, docs y cierre | S70 | inline | 4fe1653 |
-| T8 — Tres tipos de objetivo de configuración y los niveles 9 y 10 como datos, con tests | S73, S74 | worker | |
-| T9 — Catálogos es/en: frases de objetivo y niveles 9–10 | S71 | worker | |
-| T10 — Panel de objetivos con frases parametrizadas, «último nivel» por orden, README y suite | S74 | worker | |
+| T8 — Tres tipos de objetivo de configuración y los niveles 9 y 10 como datos, con tests | S73, S74 | worker | ffc5445 |
+| T9 — Catálogos es/en: frases de objetivo y niveles 9–10 | S71 | worker | ffc5445 |
+| T10 — Panel de objetivos con frases parametrizadas, «último nivel» por orden, README y suite | S74 | worker | ffc5445 |
+| T11 — Dificultad declarada por nivel con insignia en selector y panel | S75 | worker | |
 
 Entrega: rama `feat/desafios`, tramos de PR de ~400 líneas revisables contra `origin/main`, mismo flujo que «Casos».
 
@@ -104,3 +115,5 @@ Entrega: rama `feat/desafios`, tramos de PR de ~400 líneas revisables contra `o
 
 
 **L6 — Extensión pedida por el usuario: configuración concreta en desafíos NUEVOS (verbatim).** «Aparte de desafíos de conexión de cables, hay desafíos que configuración de equipos? De pedir nombres y direcciones Ip concretas» y, al elegir opción: «Pero sería crear desafíos nuevos, no sobre los ya existentes». Se extiende la feature con S73 (tres tipos de objetivo) y S74 (niveles 9 y 10), sin tocar S72.
+
+**L7 — Clasificación por dificultad pedida por el usuario (verbatim).** «Incluso los desafíos se podrían clasificar en 3 nieveles: fácil (verde), medio (naranja) y difícil (rojo) según los requisitos para completarllo». S75: la dificultad la fija lo que pide el nivel, no su posición; el mapeo concreto (verde 1/2/3/10, naranja 4/6/7, rojo 5/8/9) es decisión del agente registrada acá y ajustable como datos.
