@@ -47,6 +47,25 @@ describe('header: the lab and the case file are two groups', () => {
     expect(within(file).queryByRole('button', { name: ES['levels.action'] })).toBeNull();
   });
 
+  it('keeps the two history buttons in the lab group, off while there is no history (S83)', () => {
+    render(<App />);
+
+    const lab = screen.getByRole('group', { name: ES['header.labGroup'] });
+    const file = screen.getByRole('group', { name: ES['header.caseGroup'] });
+    const undo = within(lab).getByRole('button', { name: ES['action.undo'] });
+    const redo = within(lab).getByRole('button', { name: ES['action.redo'] });
+
+    // The gesture and its shortcut are the same action, and the shortcut is announced (S83).
+    expect(undo.getAttribute('aria-keyshortcuts')).toBe('Control+Z');
+    expect(redo.getAttribute('aria-keyshortcuts')).toBe('Control+Y');
+    // Visible but dim: the first render has no step to walk in either direction.
+    expect(undo.hasAttribute('disabled')).toBe(true);
+    expect(redo.hasAttribute('disabled')).toBe(true);
+    // Nothing of the history belongs to the case file.
+    expect(within(file).queryByRole('button', { name: ES['action.undo'] })).toBeNull();
+    expect(within(file).queryByRole('button', { name: ES['action.redo'] })).toBeNull();
+  });
+
   it('reads the lab first, the file second, and leaves the language outside both', () => {
     render(<App />);
 

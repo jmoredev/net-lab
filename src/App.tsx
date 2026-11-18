@@ -48,6 +48,17 @@ function nextLevelOf(level: Level): Level | null {
 }
 
 /**
+ * True while the keystroke belongs to a text field: an input, a textarea or anything being
+ * edited in place (S82). There the browser's own undo owns Ctrl+Z, as in any other app, so
+ * the shortcut of the lab stays out of the way.
+ */
+function isTextEntry(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable;
+}
+
+/**
  * The app and the language provider that owns it, so every string below is resolved in
  * the active language (S36, S38). The provider is mounted inside `App` and not around the
  * whole tree by the caller: the app is the only entry point.
@@ -136,6 +147,43 @@ function NetLab() {
   }, []);
 
   const endTravel = useCallback(() => setTravel(null), []);
+
+  // Undo and redo are the two actions of the history (S81), shared by the header buttons and
+  // by the shortcuts so the keyboard and the pointer never drift apart (S83). They are inert
+  // while a packet is in flight, like every other control that changes the lab.
+  const undoLab = useCallback(() => {
+    if (busy) return;
+    dispatch({ type: 'undo' });
+  }, [busy]);
+
+  const redoLab = useCallback(() => {
+    if (busy) return;
+    dispatch({ type: 'redo' });
+  }, [busy]);
+
+  // The classic shortcuts of S82, heard on the window. A text field keeps its own undo: the
+  // student editing a name is undoing what they typed, not what the lab did. Command stands
+  // in for Control on a Mac keyboard; the named combinations are the only ones accepted.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isTextEntry(event.target) || event.altKey) return;
+      const key = event.key.toLowerCase();
+
+      if (key === 'z' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        if (event.shiftKey) redoLab();
+        else undoLab();
+        return;
+      }
+      if (key === 'y' && event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        event.preventDefault();
+        redoLab();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [undoLab, redoLab]);
 
   /**
    * Starts the round trip of S23, or answers with the reason why there is no route. The
@@ -258,6 +306,27 @@ function NetLab() {
               onClick={() => setLevelsOpen(true)}
             >
               {t('levels.action')}
+            </button>
+            {/* The history of the lab on screen (S83): the same two actions as the shortcuts.
+                Off — visible but dim — while their stack is empty, because there is nothing
+                to walk in that direction. */}
+            <button
+              type="button"
+              className="button"
+              disabled={busy || state.past.length === 0}
+              aria-keyshortcuts="Control+Z"
+              onClick={undoLab}
+            >
+              {t('action.undo')}
+            </button>
+            <button
+              type="button"
+              className="button"
+              disabled={busy || state.future.length === 0}
+              aria-keyshortcuts="Control+Y"
+              onClick={redoLab}
+            >
+              {t('action.redo')}
             </button>
           </div>
           <div className="app__group" role="group" aria-label={t('header.caseGroup')}>

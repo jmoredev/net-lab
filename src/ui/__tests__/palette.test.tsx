@@ -12,7 +12,7 @@ import { addDevice, createLab, type Lab } from '../../domain/lab';
 import { MAX_DEVICES, type Result } from '../../domain/types';
 import { LanguageProvider } from '../../i18n/LanguageProvider';
 import { DevicePalette } from '../components/DevicePalette';
-import type { LabState } from '../labReducer';
+import { labStateWith, type LabState } from '../labReducer';
 
 function unwrap(result: Result<Lab>): Lab {
   if (!result.ok) throw new Error(result.error);
@@ -36,14 +36,7 @@ function overTheCap(): Lab {
 }
 
 function stateOf(lab: Lab): LabState {
-  return {
-    lab,
-    selectedId: null,
-    selectedLinkId: null,
-    hoveredId: null,
-    message: null,
-    messageCode: null,
-  };
+  return labStateWith(lab);
 }
 
 function renderPalette(lab: Lab): void {

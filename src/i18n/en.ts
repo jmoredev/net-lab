@@ -140,6 +140,9 @@ export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'action.disconnect': 'Disconnect',
   'action.send': 'Send',
   'action.deleteDevice': 'Delete device',
+  // Undo and redo of the header, the same action as their shortcuts (S83, S85).
+  'action.undo': 'Undo',
+  'action.redo': 'Redo',
 
   // No route at all (S23)
   'send.noRoute': 'There is no route to {name}.',
