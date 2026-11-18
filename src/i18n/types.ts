@@ -134,6 +134,9 @@ export type UiKey =
   | 'action.disconnect'
   | 'action.send'
   | 'action.deleteDevice'
+  // Undo and redo of the lab, in the header and on the keyboard (S85).
+  | 'action.undo'
+  | 'action.redo'
   // The failed send, when the route does not exist at all (S23).
   | 'send.noRoute'
   | 'send.unknownDestination'

@@ -18,8 +18,15 @@ import {
 } from '../domain/lab';
 import type { DeviceKind, DomainMessageCode, MessageParams, Point, PortRef } from '../domain/types';
 
+/** Steps of undo kept in `past`: labs are small, but a classroom machine is not infinite (S81). */
+const HISTORY_LIMIT = 100;
+
 export interface LabState {
   lab: Lab;
+  /** The labs this document has been, newest at the end: what `undo` walks back (S81). */
+  past: Lab[];
+  /** The labs an undone edit left behind, oldest at the front: what `redo` walks forward. */
+  future: Lab[];
   selectedId: string | null;
   /** Cable picked on the canvas, shown with its delete badge (S33). */
   selectedLinkId: string | null;
@@ -48,12 +55,16 @@ export type LabAction =
   | { type: 'select-link'; linkId: string | null }
   | { type: 'hover'; id: string | null }
   | { type: 'dismiss-message' }
+  | { type: 'undo' }
+  | { type: 'redo' }
   | { type: 'load'; lab: Lab }
   | { type: 'reset' };
 
 export function initialLabState(): LabState {
   return {
     lab: createLab(),
+    past: [],
+    future: [],
     selectedId: null,
     selectedLinkId: null,
     hoveredId: null,
@@ -62,9 +73,21 @@ export function initialLabState(): LabState {
   };
 }
 
-/** A state that only carries a lab: used by the example lab and by the stored lab (S24, S31). */
+/**
+ * A state that only carries a lab, with no history: used by the example lab, the stored lab
+ * and the lab of a level or a case (S24, S31). Opening a document is not an edit (S81).
+ */
 export function labStateWith(lab: Lab): LabState {
-  return { lab, selectedId: null, selectedLinkId: null, hoveredId: null, message: null, messageCode: null };
+  return {
+    lab,
+    past: [],
+    future: [],
+    selectedId: null,
+    selectedLinkId: null,
+    hoveredId: null,
+    message: null,
+    messageCode: null,
+  };
 }
 
 export function labReducer(state: LabState, action: LabAction): LabState {
@@ -74,27 +97,25 @@ export function labReducer(state: LabState, action: LabAction): LabState {
       if (!result.ok) return failed(state, result);
       const devices = result.value.devices;
       return {
-        ...state,
-        lab: result.value,
+        ...edited(state, result.value),
         selectedId: devices[devices.length - 1].id,
-        message: null,
-        messageCode: null,
       };
     }
-    case 'move-device':
-      return { ...state, lab: moveDevice(state.lab, action.id, action.position) };
+    case 'move-device': {
+      const next = moveDevice(state.lab, action.id, action.position);
+      // A move of a device that is gone changes nothing: there is no step to undo (S81).
+      if (next === state.lab) return state;
+      return withHistory(state, next);
+    }
     case 'rename-device':
       return apply(state, renameDevice(state.lab, action.id, action.name));
     case 'delete-device': {
       const result = deleteDevice(state.lab, action.id);
       if (!result.ok) return failed(state, result);
       return {
-        ...state,
-        lab: result.value,
+        ...edited(state, result.value),
         selectedId: state.selectedId === action.id ? null : state.selectedId,
         selectedLinkId: linkStillExists(result.value, state.selectedLinkId),
-        message: null,
-        messageCode: null,
       };
     }
     case 'connect-cable':
@@ -124,6 +145,26 @@ export function labReducer(state: LabState, action: LabAction): LabState {
       return { ...state, hoveredId: action.id };
     case 'dismiss-message':
       return { ...state, message: null, messageCode: null };
+    case 'undo': {
+      const previous = state.past[state.past.length - 1];
+      // An empty stack is a no-op, with no message: the button is already disabled and a
+      // shortcut that arrives too early is simply ignored (S81).
+      if (previous === undefined) return state;
+      return {
+        ...restore(state, previous),
+        past: state.past.slice(0, -1),
+        future: [state.lab, ...state.future],
+      };
+    }
+    case 'redo': {
+      const next = state.future[0];
+      if (next === undefined) return state;
+      return {
+        ...restore(state, next),
+        past: [...state.past, state.lab].slice(-HISTORY_LIMIT),
+        future: state.future.slice(1),
+      };
+    }
     case 'load':
       return labStateWith(action.lab);
     case 'reset':
@@ -134,7 +175,38 @@ export function labReducer(state: LabState, action: LabAction): LabState {
 }
 
 function apply(state: LabState, result: Result<Lab>): LabState {
-  return result.ok ? { ...state, lab: result.value, message: null, messageCode: null } : failed(state, result);
+  return result.ok ? edited(state, result.value) : failed(state, result);
+}
+
+/** A lab that changed under its own rules, so the banner of the previous failure goes away. */
+function edited(state: LabState, lab: Lab): LabState {
+  return { ...withHistory(state, lab), message: null, messageCode: null };
+}
+
+/**
+ * The one place that records a step (S81): the lab on screen becomes the newest entry of
+ * `past`, capped at `HISTORY_LIMIT`, and whatever had been undone is no longer ahead.
+ * Called only by an edit that succeeded; a failed one changed nothing, so it has no step.
+ */
+function withHistory(state: LabState, lab: Lab): LabState {
+  return { ...state, lab, past: [...state.past, state.lab].slice(-HISTORY_LIMIT), future: [] };
+}
+
+/**
+ * A lab brought back by `undo` or `redo`. The selections survive only while the device and the
+ * cable they name are still part of it (S81), and the message banner is left exactly as the
+ * incoming state had it: undoing an edit is not a failure and does not clear one either.
+ */
+function restore(state: LabState, lab: Lab): LabState {
+  return {
+    ...state,
+    lab,
+    selectedId:
+      state.selectedId !== null && lab.devices.some((device) => device.id === state.selectedId)
+        ? state.selectedId
+        : null,
+    selectedLinkId: linkStillExists(lab, state.selectedLinkId),
+  };
 }
 
 /** A failure travels twice: as the domain's Spanish text and as a code for the catalogue. */

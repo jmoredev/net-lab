@@ -145,6 +145,9 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'action.disconnect': 'Desconectar',
   'action.send': 'Enviar',
   'action.deleteDevice': 'Eliminar dispositivo',
+  // Deshacer y rehacer de la barra: la misma acción que sus atajos (S83, S85).
+  'action.undo': 'Deshacer',
+  'action.redo': 'Rehacer',
 
   // No route at all (S23)
   'send.noRoute': 'No hay ningún camino hasta {name}.',

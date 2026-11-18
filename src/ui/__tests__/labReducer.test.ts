@@ -154,6 +154,170 @@ describe('labReducer: router settings', () => {
   });
 });
 
+describe('labReducer: the history of the lab (S81)', () => {
+  it('starts with both stacks empty', () => {
+    const state = initialLabState();
+    expect(state.past).toEqual([]);
+    expect(state.future).toEqual([]);
+  });
+
+  it('pushes the previous lab once for every successful edit', () => {
+    const { state, laptopId, linkId } = wiredState();
+
+    // The three edits that built the lab are three steps, and the first one is the empty lab.
+    expect(state.past).toHaveLength(3);
+    expect(state.past[0]).toEqual(createLab());
+    expect(state.past[2]).not.toBe(state.lab);
+
+    const moved = labReducer(state, { type: 'move-device', id: laptopId, position: { x: 300, y: 200 } });
+    expect(moved.past).toHaveLength(4);
+    expect(moved.past[3]).toBe(state.lab);
+
+    const addressed = labReducer(moved, {
+      type: 'set-addressing',
+      id: laptopId,
+      patch: { mode: 'manual', manualIp: '192.168.1.50', manualGateway: '192.168.1.1' },
+    });
+    expect(addressed.past).toHaveLength(5);
+    expect(addressed.past[4]).toBe(moved.lab);
+
+    const disconnected = labReducer(addressed, { type: 'disconnect-cable', linkId });
+    expect(disconnected.past).toHaveLength(6);
+    expect(disconnected.past[5]).toBe(addressed.lab);
+
+    const deleted = labReducer(disconnected, { type: 'delete-device', id: laptopId });
+    expect(deleted.past).toHaveLength(7);
+    expect(deleted.past[6]).toBe(disconnected.lab);
+  });
+
+  it('does not touch the history when the edit fails', () => {
+    const { state, laptopId } = wiredState();
+
+    const failed = labReducer(state, { type: 'rename-device', id: laptopId, name: '  ' });
+
+    expect(failed.message).toBe('El nombre no puede estar vacío.');
+    expect(failed.past).toBe(state.past);
+    expect(failed.future).toBe(state.future);
+  });
+
+  it('a selection, a cable selection or a hover is not a step of the history', () => {
+    const { state, laptopId, linkId } = wiredState();
+
+    let next = labReducer(state, { type: 'select', id: laptopId });
+    next = labReducer(next, { type: 'select-link', linkId });
+    next = labReducer(next, { type: 'hover', id: laptopId });
+    next = labReducer(next, { type: 'dismiss-message' });
+
+    expect(next.past).toBe(state.past);
+    expect(next.future).toBe(state.future);
+  });
+
+  it('undo restores the previous lab and keeps the current one for redo', () => {
+    const { state, laptopId } = wiredState();
+    const moved = labReducer(state, { type: 'move-device', id: laptopId, position: { x: 300, y: 200 } });
+
+    const undone = labReducer(moved, { type: 'undo' });
+
+    expect(undone.lab).toEqual(state.lab);
+    expect(undone.lab).not.toBe(moved.lab);
+    expect(undone.past).toHaveLength(3);
+    expect(undone.future).toHaveLength(1);
+    expect(undone.future[0]).toBe(moved.lab);
+    // An undo is silent: it never writes a failure of its own.
+    expect(undone.message).toBeNull();
+    expect(undone.messageCode).toBeNull();
+  });
+
+  it('redo mirrors undo, and a new edit drops the future', () => {
+    const { state, laptopId } = wiredState();
+    const moved = labReducer(state, { type: 'move-device', id: laptopId, position: { x: 300, y: 200 } });
+    const undone = labReducer(moved, { type: 'undo' });
+
+    const redone = labReducer(undone, { type: 'redo' });
+    expect(redone.lab).toEqual(moved.lab);
+    expect(redone.past).toHaveLength(4);
+    expect(redone.past[3]).toBe(undone.lab);
+    expect(redone.future).toEqual([]);
+
+    // The same after an undo: what was undone is no longer ahead of the student.
+    const renamed = labReducer(undone, { type: 'rename-device', id: laptopId, name: 'Equipo de Ana' });
+    expect(renamed.future).toEqual([]);
+    expect(renamed.past).toHaveLength(4);
+    expect(renamed.past[3]).toBe(undone.lab);
+  });
+
+  it('load and reset open another document and clear both stacks', () => {
+    const { state, laptopId } = wiredState();
+    const moved = labReducer(state, { type: 'move-device', id: laptopId, position: { x: 300, y: 200 } });
+    const undone = labReducer(moved, { type: 'undo' });
+    expect(undone.future).toHaveLength(1);
+
+    const example = addDevice(createLab(), 'switch', { x: 480, y: 320 });
+    if (!example.ok) throw new Error(example.error);
+    const loaded = labReducer(undone, { type: 'load', lab: example.value });
+    expect(loaded.past).toEqual([]);
+    expect(loaded.future).toEqual([]);
+
+    const reset = labReducer(undone, { type: 'reset' });
+    expect(reset.past).toEqual([]);
+    expect(reset.future).toEqual([]);
+  });
+
+  it('keeps the last hundred steps and drops the oldest beyond the cap', () => {
+    let state = labReducer(initialLabState(), { type: 'add-device', kind: 'router', position: { x: 0, y: 0 } });
+    const routerId = state.selectedId as string;
+
+    for (let index = 0; index < 120; index += 1) {
+      state = labReducer(state, { type: 'move-device', id: routerId, position: { x: index, y: 0 } });
+    }
+
+    const positionOf = (lab: (typeof state.past)[number]) =>
+      lab.devices.find((device) => device.id === routerId)?.position.x;
+
+    expect(state.past).toHaveLength(100);
+    // The oldest kept step is the lab before the move to 19; the newest is the one at 118.
+    expect(positionOf(state.past[0])).toBe(19);
+    expect(positionOf(state.past[99])).toBe(118);
+  });
+
+  it('ignores undo and redo when the matching stack is empty', () => {
+    const state = initialLabState();
+
+    expect(labReducer(state, { type: 'undo' })).toBe(state);
+    expect(labReducer(state, { type: 'redo' })).toBe(state);
+
+    const edited = labReducer(state, { type: 'add-device', kind: 'laptop', position: { x: 10, y: 10 } });
+    const tooEarly = labReducer(edited, { type: 'redo' });
+    expect(tooEarly).toBe(edited);
+    expect(tooEarly.message).toBeNull();
+  });
+
+  it('clears a selection that the restored lab no longer has', () => {
+    let state = labReducer(initialLabState(), { type: 'add-device', kind: 'router', position: { x: 10, y: 10 } });
+    const routerId = state.selectedId as string;
+    state = labReducer(state, { type: 'add-device', kind: 'laptop', position: { x: 200, y: 10 } });
+    const laptopId = state.selectedId as string;
+    state = labReducer(state, {
+      type: 'connect-cable',
+      a: { deviceId: laptopId, portId: 'eth' },
+      b: { deviceId: routerId, portId: 'lan1' },
+    });
+    const linkId = state.lab.links[0].id;
+    state = labReducer(state, { type: 'select-link', linkId });
+    expect(state.selectedId).toBe(laptopId);
+
+    // The cable is gone from the restored lab, so the selected cable goes with it.
+    const withoutCable = labReducer(state, { type: 'undo' });
+    expect(withoutCable.selectedLinkId).toBeNull();
+    expect(withoutCable.selectedId).toBe(laptopId);
+
+    // The laptop itself is gone: the selection never points at a device that is not there.
+    const withoutLaptop = labReducer(withoutCable, { type: 'undo' });
+    expect(withoutLaptop.lab.devices.some((device) => device.id === laptopId)).toBe(false);
+    expect(withoutLaptop.selectedId).toBeNull();
+  });
+});
+
 /** A router cabled to a laptop, the smallest lab with one link to select. */
 function wiredState() {
   let state = labReducer(initialLabState(), { type: 'add-device', kind: 'router', position: { x: 10, y: 10 } });
