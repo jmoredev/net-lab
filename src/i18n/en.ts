@@ -145,6 +145,47 @@ export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'send.noRoute': 'There is no route to {name}.',
   'send.unknownDestination': 'the destination',
 
+  // Levels (S71): the «Desafíos» entry, its selector, the goal panel and its banner, then the
+  // eight levels of S72 with one title and one brief each. The two goal lines are templates:
+  // the panel fills `{name}` with the device the level asks about.
+  'levels.action': 'Challenges',
+  'levels.selectorTitle': 'Challenges',
+  'levels.selectorHint': 'Pick a level: you can jump to any of them and come back another day.',
+  'levels.resume': 'Continue here',
+  'levels.completedBadge': 'Completed',
+  'levels.goalOnline': '{name} reaches the Internet',
+  'levels.goalManualOnline': '{name} browses with its manual IP',
+  'levels.panelTitle': 'Level goals',
+  'levels.done': 'Level complete!',
+  'levels.next': 'Next level',
+  'levels.backToLevels': 'Back to the levels',
+  'levels.finishedAll': 'You have completed every level.',
+
+  'levels.enchufa-portatil.title': 'Plug in the laptop',
+  'levels.enchufa-portatil.brief':
+    'The laptop has no cable at all. Connect it to the router so it can reach the Internet.',
+  'levels.falta-cable-internet.title': 'The Internet cable is missing',
+  'levels.falta-cable-internet.brief':
+    'The local network is wired up just fine, but the router cannot reach the Internet. Check its connections.',
+  'levels.wifi-sin-enganchar.title': 'WiFi not joined',
+  'levels.wifi-sin-enganchar.brief':
+    'The laptop has its WiFi switched on, but it has not joined the router network.',
+  'levels.switch-del-aula.title': 'The classroom switch',
+  'levels.switch-del-aula.brief':
+    'Cable the three PCs to the switch and the switch to the router, so the whole class can browse.',
+  'levels.ip-puesta-a-mano.title': 'The hand-set IP',
+  'levels.ip-puesta-a-mano.brief':
+    'The laptop has a manual IP from another network. Fix it so it can browse, without switching to DHCP.',
+  'levels.lio-de-cables.title': 'A tangle of cables',
+  'levels.lio-de-cables.brief':
+    'Three devices and three different problems: no cable, no radio and the wrong IP.',
+  'levels.monta-el-aula.title': 'Set up classroom 2.º B',
+  'levels.monta-el-aula.brief':
+    'Build the whole network: the switch, both PCs by cable, the laptop over WiFi and the line to the Internet.',
+  'levels.reparto-de-direcciones.title': 'Sharing out the addresses',
+  'levels.reparto-de-direcciones.brief':
+    'Two laptops with manual IPs on the wrong networks and a phone that has not joined. Fix all three.',
+
   // Domain diagnostics (S22)
   'ethernet-disabled': 'Ethernet is switched off on this device.',
   'wifi-disabled': 'WiFi is switched off on this device.',

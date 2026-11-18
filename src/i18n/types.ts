@@ -136,7 +136,37 @@ export type UiKey =
   | 'action.deleteDevice'
   // The failed send, when the route does not exist at all (S23).
   | 'send.noRoute'
-  | 'send.unknownDestination';
+  | 'send.unknownDestination'
+  // Levels: the «Desafíos» entry, its selector, the goal panel and the banner (S71).
+  | 'levels.action'
+  | 'levels.selectorTitle'
+  | 'levels.selectorHint'
+  | 'levels.resume'
+  | 'levels.completedBadge'
+  | 'levels.goalOnline'
+  | 'levels.goalManualOnline'
+  | 'levels.panelTitle'
+  | 'levels.done'
+  | 'levels.next'
+  | 'levels.backToLevels'
+  | 'levels.finishedAll'
+  // The eight levels of S72, one title for the selector card and one brief for the panel each.
+  | 'levels.enchufa-portatil.title'
+  | 'levels.enchufa-portatil.brief'
+  | 'levels.falta-cable-internet.title'
+  | 'levels.falta-cable-internet.brief'
+  | 'levels.wifi-sin-enganchar.title'
+  | 'levels.wifi-sin-enganchar.brief'
+  | 'levels.switch-del-aula.title'
+  | 'levels.switch-del-aula.brief'
+  | 'levels.ip-puesta-a-mano.title'
+  | 'levels.ip-puesta-a-mano.brief'
+  | 'levels.lio-de-cables.title'
+  | 'levels.lio-de-cables.brief'
+  | 'levels.monta-el-aula.title'
+  | 'levels.monta-el-aula.brief'
+  | 'levels.reparto-de-direcciones.title'
+  | 'levels.reparto-de-direcciones.brief';
 
 /** Any key of the catalogue: an interface string, a domain message or a case failure (S57). */
 export type MessageKey = UiKey | DomainMessageCode | CaseMessageCode;

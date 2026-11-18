@@ -150,6 +150,47 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'send.noRoute': 'No hay ningún camino hasta {name}.',
   'send.unknownDestination': 'el destino',
 
+  // Levels (S71): the «Desafíos» entry, its selector, the goal panel and its banner, then the
+  // eight levels of S72 with one title and one brief each. The two goal lines are templates:
+  // the panel fills `{name}` with the device the level asks about.
+  'levels.action': 'Desafíos',
+  'levels.selectorTitle': 'Desafíos',
+  'levels.selectorHint': 'Elige un nivel: puedes saltar al que quieras y retomarlo otro día.',
+  'levels.resume': 'Seguir por aquí',
+  'levels.completedBadge': 'Superado',
+  'levels.goalOnline': '{name} llega a Internet',
+  'levels.goalManualOnline': '{name} navega con su IP manual',
+  'levels.panelTitle': 'Objetivos del nivel',
+  'levels.done': '¡Nivel superado!',
+  'levels.next': 'Siguiente nivel',
+  'levels.backToLevels': 'Volver a los niveles',
+  'levels.finishedAll': 'Has completado todos los niveles.',
+
+  'levels.enchufa-portatil.title': 'Enchufa el portátil',
+  'levels.enchufa-portatil.brief':
+    'El portátil no tiene ningún cable. Conéctalo al router para que llegue a Internet.',
+  'levels.falta-cable-internet.title': 'Falta el cable a Internet',
+  'levels.falta-cable-internet.brief':
+    'La red local está bien montada, pero el router no llega a Internet. Revisa sus conexiones.',
+  'levels.wifi-sin-enganchar.title': 'WiFi sin enganchar',
+  'levels.wifi-sin-enganchar.brief':
+    'El portátil tiene la WiFi encendida pero no se ha unido a la red del router.',
+  'levels.switch-del-aula.title': 'El switch del aula',
+  'levels.switch-del-aula.brief':
+    'Cablea los tres PCs al switch y el switch al router para que toda la clase navegue.',
+  'levels.ip-puesta-a-mano.title': 'La IP puesta a mano',
+  'levels.ip-puesta-a-mano.brief':
+    'El portátil tiene una IP manual de otra red. Corrígela para que navegue, sin cambiar a DHCP.',
+  'levels.lio-de-cables.title': 'Un lío de cables',
+  'levels.lio-de-cables.brief':
+    'Tres dispositivos y tres problemas distintos: sin cable, sin radio y con la IP equivocada.',
+  'levels.monta-el-aula.title': 'Monta el aula de 2.º B',
+  'levels.monta-el-aula.brief':
+    'Monta la red completa: el switch, los dos PCs por cable, el portátil por WiFi y la línea a Internet.',
+  'levels.reparto-de-direcciones.title': 'El reparto de direcciones',
+  'levels.reparto-de-direcciones.brief':
+    'Dos portátiles con IP manual en redes equivocadas y un móvil sin unirse. Arregla los tres.',
+
   // Domain diagnostics (S22): the eleven rows of the diagnosis table.
   'ethernet-disabled': 'La conexión Ethernet está desactivada en este dispositivo.',
   'wifi-disabled': 'La conexión WiFi está desactivada en este dispositivo.',
