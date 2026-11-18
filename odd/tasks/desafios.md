@@ -87,7 +87,7 @@ No objetivos de la extensión: no se piden direcciones MAC, ni SSID concretos, n
 | T8 — Tres tipos de objetivo de configuración y los niveles 9 y 10 como datos, con tests | S73, S74 | worker | ffc5445 |
 | T9 — Catálogos es/en: frases de objetivo y niveles 9–10 | S71 | worker | ffc5445 |
 | T10 — Panel de objetivos con frases parametrizadas, «último nivel» por orden, README y suite | S74 | worker | ffc5445 |
-| T11 — Dificultad declarada por nivel con insignia en selector y panel | S75 | worker | |
+| T11 — Dificultad declarada por nivel con insignia en selector y panel | S75 | worker | 08fc80b |
 
 Entrega: rama `feat/desafios`, tramos de PR de ~400 líneas revisables contra `origin/main`, mismo flujo que «Casos».
 
@@ -117,3 +117,5 @@ Entrega: rama `feat/desafios`, tramos de PR de ~400 líneas revisables contra `o
 **L6 — Extensión pedida por el usuario: configuración concreta en desafíos NUEVOS (verbatim).** «Aparte de desafíos de conexión de cables, hay desafíos que configuración de equipos? De pedir nombres y direcciones Ip concretas» y, al elegir opción: «Pero sería crear desafíos nuevos, no sobre los ya existentes». Se extiende la feature con S73 (tres tipos de objetivo) y S74 (niveles 9 y 10), sin tocar S72.
 
 **L7 — Clasificación por dificultad pedida por el usuario (verbatim).** «Incluso los desafíos se podrían clasificar en 3 nieveles: fácil (verde), medio (naranja) y difícil (rojo) según los requisitos para completarllo». S75: la dificultad la fija lo que pide el nivel, no su posición; el mapeo concreto (verde 1/2/3/10, naranja 4/6/7, rojo 5/8/9) es decisión del agente registrada acá y ajustable como datos.
+
+**L8 — Cierre de las dos extensiones.** Configuración concreta (T8–T10, `ffc5445`): objetivos `address-is`, `router-network` y `device-named`, niveles 9 «La red del otro aula» y 10 «El aula rotulada», los ocho de S72 intactos. Dificultad (T11, `08fc80b`, S75/L7): insignia con palabra y color (verde/naranja/rojo) en selector y panel, mapeo fijado por requisitos. **Suite final: 481 tests en 35 archivos**, `tsc` limpio, build 101,34 KB gzip; los 449 previos pasan salvo los pins que S74/S75 mismos cambian, actualizados con fidelidad.
