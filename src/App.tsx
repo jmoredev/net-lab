@@ -26,6 +26,7 @@ import {
   withLevelCompleted,
   type LevelProgress,
 } from './ui/levelProgress';
+import { makeQuizGate, reasonHidden } from './ui/quiz';
 import { clearFragment, readCaseFromHash, type StartupCase } from './ui/startup';
 import { clearLab, loadLab, saveLab } from './ui/storage';
 import { useStoredCase } from './ui/useStoredCase';
@@ -83,6 +84,14 @@ function NetLab() {
   const [activeLevelId, setActiveLevelId] = useState<string | null>(null);
   /** Device being dragged on the canvas: the palette turns into the trash zone (S11). */
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  /**
+   * The reveal gate of the socratic diagnosis (S76, S79). It is created once per session and
+   * lives only in memory: the classroom computers are frozen, so nothing here is stored (D38).
+   */
+  const [quiz] = useState(makeQuizGate);
+  /** Bumped whenever the gate changes, so the panel and the send result read it again. */
+  const [, setQuizRevision] = useState(0);
+  const refreshQuiz = useCallback(() => setQuizRevision((revision) => revision + 1), []);
   const statuses = useMemo(() => computeStatus(state.lab), [state.lab]);
   const hasDevices = state.lab.devices.some((device) => device.kind !== 'internet');
   const activeLevel =
@@ -90,6 +99,11 @@ function NetLab() {
       ? null
       : (LEVELS.find((level) => level.id === activeLevelId) ?? null);
   const followingLevel = activeLevel === null ? null : nextLevelOf(activeLevel);
+  /**
+   * True while a level is being played: the lab on screen was handed over broken on purpose,
+   * so every reason is a planted fault and opens the quiz (D41).
+   */
+  const inLevel = activeLevel !== null;
   // The animation state lives here and never enters the reducer (S23).
   const busy = travel !== null;
 
@@ -134,7 +148,20 @@ function NetLab() {
       if (hops === null) {
         // No route: the reason of the device that blocks it, never a silent failure.
         const reason = statuses[fromId]?.reason;
-        if (reason) return { key: reason.code, params: reason.params };
+        if (reason) {
+          const { code, params } = reason;
+          // The sentence is only printed once the reason of that device is not hidden; until
+          // then the result names the device and points at its quiz (S76). Which reasons are
+          // hidden depends on the mode on screen (D41), in one place: `reasonHidden`.
+          const hidden = reasonHidden(quiz, fromId, code, inLevel);
+          return {
+            key: code,
+            params,
+            ...(hidden
+              ? { blocker: { id: fromId, name: getDevice(state.lab, fromId)?.name ?? t('canvas.unknownDevice'), code } }
+              : {}),
+          };
+        }
         return {
           key: 'send.noRoute',
           params: { name: getDevice(state.lab, toId)?.name ?? t('send.unknownDestination') },
@@ -143,7 +170,7 @@ function NetLab() {
       setTravel({ from: fromId, to: toId, hops });
       return null;
     },
-    [state.lab, statuses, t],
+    [state.lab, statuses, t, quiz, inLevel],
   );
 
   /**
@@ -353,6 +380,9 @@ function NetLab() {
             dispatch={dispatch}
             busy={busy}
             onSend={startTravel}
+            quiz={quiz}
+            inLevel={inLevel}
+            onQuizChange={refreshQuiz}
           />
         </div>
       </div>

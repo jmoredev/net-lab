@@ -7,7 +7,7 @@
  * exact wording of the catalogue: the Spanish side is frozen, the English side is content.
  */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from '../../App';
 import { ANALOGIES } from '../analogies';
@@ -34,6 +34,15 @@ async function cableRouterAndLaptop(user: User): Promise<void> {
   await addDevice(user, 'Router');
   await addDevice(user, 'Laptop');
   await user.click(screen.getByRole('button', { name: 'LAN 1' }));
+}
+
+/** Selects a device on the canvas by its caption, which may carry its address (S29). */
+function selectDeviceByCaption(name: string): void {
+  const caption = Array.from(document.querySelectorAll('svg text')).find(
+    (node) => node.textContent === name || node.textContent?.startsWith(`${name} · `) === true,
+  );
+  if (!caption) throw new Error(`the canvas shows no caption ${name}`);
+  fireEvent.click(caption);
 }
 
 /** The switcher is the only way the language changes (S36). */
@@ -107,6 +116,8 @@ describe('diagnostics in English', () => {
     const manualIp = screen.getByLabelText('IP manual');
     await user.clear(manualIp);
     await user.type(manualIp, '10.0.0.5{Enter}');
+    // The diagnosis is behind the quiz now (S76), so the risk comes before the sentence.
+    await user.click(screen.getByRole('button', { name: ES['quiz.option.ip-outside-subnet'] }));
     // The same row, first in Spanish, so the switch below is the only thing that changes.
     expect(screen.getByText('La IP 10.0.0.5 no pertenece a la subred 192.168.1.0.')).not.toBeNull();
 
@@ -212,12 +223,25 @@ const ONE_SCREEN: UiKey[] = [
   'field.destination',
   'action.send',
   'action.deleteDevice',
+  // D41: en el laboratorio libre el cable WAN que falta se ve directo, así que el quiz de ese
+  // mismo router roto solo se abre dentro de un nivel (S76, D41): el nivel 2 lo entrega igual.
+  'quiz.question',
+  'quiz.hintAction',
+  'quiz.option.router-no-wan',
+  'quiz.option.not-connected',
+  'quiz.option.dead-end-cable',
+  'quiz.option.router-wifi-off',
 ];
 
 describe('one language on one screen', () => {
   it('leaves no Spanish sentence behind after the switch', async () => {
     const { user } = renderApp();
-    await addDevice(user, 'Router');
+    // A level, because the quiz of a missing WAN cable only opens there (D41).
+    await user.click(screen.getByRole('button', { name: ES['levels.action'] }));
+    await user.click(
+      screen.getByRole('button', { name: new RegExp(ES['levels.falta-cable-internet.title']) }),
+    );
+    selectDeviceByCaption('Router');
 
     // The list is only worth asserting if every sentence is really on screen in Spanish.
     for (const key of ONE_SCREEN) expect(pageText()).toContain(ES[key]);

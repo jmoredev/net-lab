@@ -222,6 +222,45 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'router-no-wan': 'El router no está conectado a Internet: falta el cable WAN.',
   'router-no-wan-address': 'El router aún no tiene dirección en la WAN.',
 
+  // The socratic diagnosis (S76–S80). The question and the blocked send carry no reason; the
+  // short labels carry no parameter either, so the address, the port and the name of a device
+  // only appear in the sentence of the reveal (S77, S80).
+  'quiz.question': '¿Por qué crees que no llega a internet?',
+  'quiz.hintAction': 'Dame una pista',
+  'quiz.hit': '¡Has acertado!',
+  'quiz.miss': 'No era eso',
+  'quiz.reveal': 'Este es el problema real:',
+  'quiz.blockedSend':
+    'El paquete no salió: {name} no llega a internet. Arriesga su diagnóstico para ver por qué.',
+
+  // The eleven short labels of S77, one per code of the table above.
+  'quiz.option.ethernet-disabled': 'La conexión por cable está desactivada',
+  'quiz.option.wifi-disabled': 'El WiFi está apagado',
+  'quiz.option.not-connected': 'No está conectado a ninguna red',
+  'quiz.option.router-wifi-off': 'El WiFi del router está apagado',
+  'quiz.option.dead-end-cable': 'Su cable no llega al router',
+  'quiz.option.no-lease': 'No recibe dirección del router',
+  'quiz.option.ip-outside-subnet': 'Su IP es de otra red',
+  'quiz.option.ip-duplicate': 'Su IP está repetida',
+  'quiz.option.gateway-wrong': 'Su puerta de enlace está mal',
+  'quiz.option.router-no-wan': 'El router no tiene línea a Internet',
+  'quiz.option.router-no-wan-address': 'El router no pidió su dirección pública',
+
+  // The eleven hints of S78: they point at where to look without naming the reason.
+  'quiz.hint.ethernet-disabled': 'Mira si este equipo tiene la conexión por cable activada.',
+  'quiz.hint.wifi-disabled':
+    'La radio también se puede apagar: mira qué conexiones tiene encendidas.',
+  'quiz.hint.not-connected': 'Ningún camino llega al router: mira cables y WiFi.',
+  'quiz.hint.router-wifi-off': 'El problema puede no estar en este equipo: mira el router.',
+  'quiz.hint.dead-end-cable': 'Sigue el cable con el dedo: ¿a dónde termina?',
+  'quiz.hint.no-lease': 'El router reparte direcciones: ¿le está tocando una a este equipo?',
+  'quiz.hint.ip-outside-subnet': 'Compara los tres primeros números de la IP con los del router.',
+  'quiz.hint.ip-duplicate': 'Dos equipos no pueden llevar la misma dirección.',
+  'quiz.hint.gateway-wrong': 'La puerta de enlace tiene que ser la del router.',
+  'quiz.hint.router-no-wan': 'El router también necesita su propia línea a Internet.',
+  'quiz.hint.router-no-wan-address':
+    'El cable WAN está puesto: ¿qué más necesita el router para salir?',
+
   // Domain validation failures.
   'internet-not-addable': 'El nodo Internet no se puede añadir.',
   'router-already-exists': 'Ya hay un router en el laboratorio.',

@@ -665,6 +665,91 @@ body {
   color: var(--state-offline);
 }
 
+/* The socratic diagnosis (S76–S80): the question replaces the reason until the student risks
+   a prediction, so it takes the same place in the panel and never looks like a warning. */
+/* The question the student must risk an answer to (S76, S77). It is a card on purpose:
+   it must not read as one more row of the panel, but as the app asking for help. */
+.quiz {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-radius: var(--radius);
+}
+
+.quiz__question {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--accent) 55%, var(--text));
+}
+
+/* Options read like an exam list: full-width bordered answers, lettered A, B, C by a
+   CSS counter, the letter tinted with the accent so the eye groups them at a glance. */
+.quiz__options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: quiz-option;
+}
+
+.quiz__option {
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.quiz__option:hover {
+  border-color: var(--accent);
+}
+
+.quiz__option::before {
+  counter-increment: quiz-option;
+  content: counter(quiz-option, upper-alpha) '. ';
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* The hint reads as a note someone left on the card, not as another panel row (S78). */
+.quiz__hint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  background: var(--bg);
+  border-left: 3px solid var(--border);
+  border-radius: 6px;
+}
+
+/* The hit or the miss of the risk, announced aloud by the panel (S80): green when the
+   student was right, red when the truth had to be shown to them. */
+.panel__feedback {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.panel__feedback--hit {
+  color: var(--state-online);
+}
+
+.panel__feedback--miss {
+  color: var(--state-offline);
+}
+
+/* The line that introduces the full sentence, parameters and all (S80). */
+.panel__reveal {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
 .panel__note {
   margin: 0;
   font-size: 0.9375rem;
