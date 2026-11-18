@@ -201,7 +201,10 @@ function DiagnosisSection({
       {/* A miss hides nothing, and both feedbacks are announced: colour is never the message. */}
       {picked === null ? null : (
         <>
-          <p className="panel__feedback" role="status">
+          <p
+            className={`panel__feedback panel__feedback--${picked === diagnosis.code ? 'hit' : 'miss'}`}
+            role="status"
+          >
             {t(picked === diagnosis.code ? 'quiz.hit' : 'quiz.miss')}
           </p>
           <p className="panel__reveal">{t('quiz.reveal')}</p>
