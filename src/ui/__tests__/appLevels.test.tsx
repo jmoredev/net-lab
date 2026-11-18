@@ -12,6 +12,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App';
 import { encodeCase, type CaseMeta } from '../../domain/case';
+import { CASE_STORAGE_KEY } from '../caseStorage';
 import {
   addDevice,
   connectWifi,
@@ -32,6 +33,8 @@ import {
   LEVEL_PROGRESS_STORAGE_KEY,
   emptyLevelProgress,
   loadLevelProgress,
+  saveLevelProgress,
+  type LevelProgress,
 } from '../levelProgress';
 import { STORAGE_KEY, saveLab } from '../storage';
 
@@ -173,6 +176,17 @@ async function solveLevel3(user: ReturnType<typeof userEvent.setup>): Promise<vo
   await user.click(screen.getByRole('button', { name: ES['action.connectWifi'] }));
 }
 
+/** Types a value into one field of the device panel and commits it, as a student would. */
+async function fill(
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+  value: string,
+): Promise<void> {
+  const input = screen.getByLabelText(label);
+  await user.clear(input);
+  await user.type(input, `${value}{Enter}`);
+}
+
 beforeEach(() => {
   window.localStorage.clear();
   window.history.replaceState(null, '', '/');
@@ -289,6 +303,7 @@ describe('the goals panel shows the declared difficulty (S75)', () => {
           <GoalsPanel
             level={level}
             lab={level.startLab}
+            progress={emptyLevelProgress()}
             onNext={vi.fn()}
             onBackToLevels={vi.fn()}
             onCompleted={vi.fn()}
@@ -439,12 +454,19 @@ describe('GoalsPanel: the goals follow the lab (S69)', () => {
     return unwrap(connectWifi(withSecond, idOf(withSecond, 'Smartphone-1'), true));
   }
 
-  function renderPanel(level: Level, lab: Lab, onNext: (() => void) | null, onCompleted = vi.fn()) {
+  function renderPanel(
+    level: Level,
+    lab: Lab,
+    onNext: (() => void) | null,
+    onCompleted = vi.fn(),
+    progress: LevelProgress = emptyLevelProgress(),
+  ) {
     const result = render(
       <LanguageProvider>
         <GoalsPanel
           level={level}
           lab={lab}
+          progress={progress}
           onNext={onNext}
           onBackToLevels={vi.fn()}
           onCompleted={onCompleted}
@@ -456,6 +478,7 @@ describe('GoalsPanel: the goals follow the lab (S69)', () => {
         <GoalsPanel
           level={level}
           lab={nextLab}
+          progress={progress}
           onNext={onNext}
           onBackToLevels={vi.fn()}
           onCompleted={onCompleted}
@@ -494,13 +517,33 @@ describe('GoalsPanel: the goals follow the lab (S69)', () => {
 
   it('offers going back to the selector instead of a next level on the tenth (S69, S74)', () => {
     const level = levelOf('el-aula-rotulada');
-    renderPanel(level, solvedLevel10(), null);
+    renderPanel(level, solvedLevel10(), null, vi.fn(), {
+      superados: LEVELS.map((entry) => entry.id),
+      ultimo: level.id,
+    });
 
     expect(within(goalsPanel()).getByText(ES['levels.finishedAll'])).not.toBeNull();
     expect(
       within(goalsPanel()).getByRole('button', { name: ES['levels.backToLevels'] }),
     ).not.toBeNull();
     expect(within(goalsPanel()).queryByRole('button', { name: ES['levels.next'] })).toBeNull();
+  });
+
+  it('says the walk is over only when every level of LEVELS is completed (S67, R3-001)', () => {
+    const level = levelOf('el-aula-rotulada');
+    // The tenth level is the last of the order, so no next level is offered. The all-complete
+    // sentence, though, is about the ten levels and not about being on the tenth: the jump of
+    // S67 lets a student land here with nine levels still pending.
+    renderPanel(level, solvedLevel10(), null, vi.fn(), {
+      superados: ['el-aula-rotulada'],
+      ultimo: level.id,
+    });
+
+    expect(within(goalsPanel()).getByRole('status').textContent).toBe(ES['levels.done']);
+    expect(within(goalsPanel()).queryByText(ES['levels.finishedAll'])).toBeNull();
+    expect(
+      within(goalsPanel()).getByRole('button', { name: ES['levels.backToLevels'] }),
+    ).not.toBeNull();
   });
 
   it('offers no action until the level is complete', () => {
@@ -548,6 +591,7 @@ describe('the goals of S74 in the panel (S73, S74)', () => {
         <GoalsPanel
           level={level}
           lab={lab}
+          progress={emptyLevelProgress()}
           onNext={vi.fn()}
           onBackToLevels={vi.fn()}
           onCompleted={vi.fn()}
@@ -561,6 +605,7 @@ describe('the goals of S74 in the panel (S73, S74)', () => {
             <GoalsPanel
               level={level}
               lab={nextLab}
+              progress={emptyLevelProgress()}
               onNext={vi.fn()}
               onBackToLevels={vi.fn()}
               onCompleted={vi.fn()}
@@ -749,11 +794,6 @@ describe('the free-mode editor is untouched (S70)', () => {
  */
 describe('the configuration levels of S74 in the app (S73, S74)', () => {
   /** Types a value into one field of the device panel and commits it, as a student would. */
-  async function fill(user: ReturnType<typeof userEvent.setup>, label: string, value: string) {
-    const input = screen.getByLabelText(label);
-    await user.clear(input);
-    await user.type(input, `${value}{Enter}`);
-  }
 
   it('solves level 9 with the router panel and the laptop address, then moves on', async () => {
     const user = userEvent.setup();
@@ -804,10 +844,89 @@ describe('the configuration levels of S74 in the app (S73, S74)', () => {
 
     expect(within(goalsPanel()).getByRole('status').textContent).toBe(ES['levels.done']);
     // The last level of the walk is the one with the highest order: only going back is offered.
-    expect(within(goalsPanel()).getByText(ES['levels.finishedAll'])).not.toBeNull();
     expect(within(goalsPanel()).queryByRole('button', { name: ES['levels.next'] })).toBeNull();
     expect(
       within(goalsPanel()).getByRole('button', { name: ES['levels.backToLevels'] }),
     ).not.toBeNull();
+    // Nine levels are still pending, so the walk is not over and the panel does not say it is
+    // (S67, R3-001): the sentence is about the ten levels, not about standing on the tenth.
+    expect(within(goalsPanel()).queryByText(ES['levels.finishedAll'])).toBeNull();
+  });
+
+  it('says the walk is over when the tenth level closes a complete progress (R3-001)', async () => {
+    const user = userEvent.setup();
+    // The nine levels before it were completed in earlier classes (S66).
+    saveLevelProgress({
+      superados: LEVELS.map((level) => level.id).filter((id) => id !== 'el-aula-rotulada'),
+      ultimo: 'la-red-del-otro-aula',
+    });
+    render(<App />);
+
+    await enterLevel(user, ES['levels.el-aula-rotulada.title']);
+    selectDevice('Router');
+    await fill(user, ES['field.name'], 'Router-2B');
+    selectDevice('PC-1');
+    await fill(user, ES['field.name'], 'PC-Docente');
+
+    expect(loadLevelProgress().superados).toHaveLength(LEVELS.length);
+    expect(within(goalsPanel()).getByText(ES['levels.finishedAll'])).not.toBeNull();
+    expect(
+      within(goalsPanel()).getByRole('button', { name: ES['levels.backToLevels'] }),
+    ).not.toBeNull();
+  });
+
+  it('jumps straight to the tenth level and does not claim the walk is over (S67, R3-001)', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    // No lock of any kind: the tenth level opens from a fresh browser (S67).
+    await enterLevel(user, ES['levels.el-aula-rotulada.title']);
+    selectDevice('Router');
+    await fill(user, ES['field.name'], 'Router-2B');
+    selectDevice('PC-1');
+    await fill(user, ES['field.name'], 'PC-Docente');
+
+    const panel = goalsPanel();
+    expect(within(panel).getByRole('status').textContent).toBe(ES['levels.done']);
+    expect(within(panel).queryByText(ES['levels.finishedAll'])).toBeNull();
+    expect(within(panel).getByRole('button', { name: ES['levels.backToLevels'] })).not.toBeNull();
+    expect(loadLevelProgress().superados).toEqual(['el-aula-rotulada']);
+  });
+});
+
+/**
+ * Entering a level replaces the lab on screen, so it replaces the case of that lab too: the
+ * panel of the old case disappears, and a case exported from inside the level carries no title
+ * of a document the student is no longer working on (S50, D32, R3-002).
+ */
+describe('entering a level drops the case of the free lab (S68, R3-002)', () => {
+  it('hides the case panel, forgets the stored case and prefills no old title', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App />);
+
+    // A case of the student's own, imported and stored under its own key (S53, D32).
+    await user.click(screen.getByRole('button', { name: ES['header.importCase'] }));
+    fireEvent.change(screen.getByLabelText(ES['import.fieldLabel']), {
+      target: { value: encodedCase() },
+    });
+    await user.click(screen.getByRole('button', { name: ES['import.action'] }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: 'La red de clase' })).not.toBeNull(),
+    );
+    expect(window.localStorage.getItem(CASE_STORAGE_KEY)).toContain('La red de clase');
+
+    await enterLevel(user, ES['levels.enchufa-portatil.title']);
+
+    // The case of the old lab is gone from the screen and from the browser.
+    expect(screen.queryByRole('heading', { name: 'La red de clase' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: ES['case.untitled'] })).toBeNull();
+    expect(window.localStorage.getItem(CASE_STORAGE_KEY)).toBeNull();
+
+    // Sharing from inside the level starts from an empty case, never from the old title.
+    await user.click(screen.getByRole('button', { name: ES['header.shareCase'] }));
+    expect((screen.getByLabelText(ES['export.fieldTitle']) as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText(ES['export.fieldBrief']) as HTMLInputElement).value).toBe('');
   });
 });

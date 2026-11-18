@@ -4,13 +4,14 @@ import {
   addDevice,
   connectCable,
   createLab,
+  dhcpRangeIsValidFor,
   getDevice,
   setAddressing,
   setWifiEnabled,
   type Lab,
   type Result,
 } from './lab';
-import { hostOctet, isHostIp } from './subnet';
+import { isHostIp } from './subnet';
 import type { DeviceKind, Point } from './types';
 
 /**
@@ -29,6 +30,35 @@ export type Goal =
   | { kind: 'device-named'; deviceId: string; name: string };
 
 /**
+ * The ids of the levels, in the order they were added: the eight of S72 and the two of S74.
+ *
+ * This tuple is the source of `LevelId`, and `Level.id` is typed with that union, so a level
+ * whose id is not here does not compile. The selector's id→catalogue-key table is typed over
+ * the same union, so a new level without keys fails to compile instead of rendering the raw key
+ * (S71, R2-004). The data and this list are kept in step by construction and pinned by a test.
+ */
+export const LEVEL_IDS = [
+  'enchufa-portatil',
+  'falta-cable-internet',
+  'wifi-sin-enganchar',
+  'switch-del-aula',
+  'ip-puesta-a-mano',
+  'lio-de-cables',
+  'monta-el-aula',
+  'reparto-de-direcciones',
+  'la-red-del-otro-aula',
+  'el-aula-rotulada',
+] as const;
+
+/** The ten ids a level can have (S72, S74), as a union the compiler checks (R2-004). */
+export type LevelId = (typeof LEVEL_IDS)[number];
+
+/** Whether that string is the id of a level: an id nobody defines is not progress (S66). */
+export function isLevelId(value: string): value is LevelId {
+  return (LEVEL_IDS as readonly string[]).includes(value);
+}
+
+/**
  * How much a level asks for (S75). The tier is fixed by the requirements that complete it —
  * one cable, a whole classroom, a manual address — and never by its position in the order.
  */
@@ -36,7 +66,7 @@ export type LevelDifficulty = 'easy' | 'medium' | 'hard';
 
 /** A level as the domain sees it: where it starts and what the student owes. */
 export interface Level {
-  id: string;
+  id: LevelId;
   /** Visual suggestion only: it orders the selector and never locks anything (S67). */
   order: number;
   /** Declared for the badge of the selector and the panel; it never blocks anything (S75). */
@@ -88,9 +118,11 @@ function isGoalMet(
 }
 
 /**
- * The network of the router and its DHCP range, with the invariants of `setDhcpRange`: a range
- * of usable hosts of that /24, never inverted, and never containing the router itself. A level
- * asking for a range the domain would refuse stays red even if the stored numbers match.
+ * The network of the router and its DHCP range, asked with the same rules the editor enforces:
+ * a range of usable hosts of that /24, never inverted, and never containing the router itself.
+ * The rules live in `dhcpRangeIsValidFor`, the one place the mutator and this goal share, so a
+ * level asking for a range the domain would refuse stays red even if the stored numbers match
+ * (S73, R2-002).
  */
 function routerNetworkIsMet(lab: Lab, goal: { lanIp: string; dhcpStart: number; dhcpEnd: number }): boolean {
   const router = lab.router;
@@ -98,12 +130,9 @@ function routerNetworkIsMet(lab: Lab, goal: { lanIp: string; dhcpStart: number; 
   if (router.lanIp !== goal.lanIp) return false;
   if (router.dhcpStart !== goal.dhcpStart || router.dhcpEnd !== goal.dhcpEnd) return false;
 
-  const routerHost = hostOctet(goal.lanIp);
-  if (routerHost === null || !isHostIp(goal.lanIp)) return false;
-  const isHostNumber = (value: number) => Number.isInteger(value) && value >= 2 && value <= 254;
-  if (!isHostNumber(goal.dhcpStart) || !isHostNumber(goal.dhcpEnd)) return false;
-  if (goal.dhcpStart > goal.dhcpEnd) return false;
-  return !(goal.dhcpStart <= routerHost && routerHost <= goal.dhcpEnd);
+  // A goal can name any address as the network of the classroom, so the address itself has to
+  // be one a router could carry before the range rules mean anything.
+  return isHostIp(goal.lanIp) && dhcpRangeIsValidFor(goal.lanIp, goal.dhcpStart, goal.dhcpEnd);
 }
 
 /** A level is complete when it asked for something and all of it is met (S69). */
@@ -370,7 +399,12 @@ function idOf(lab: Lab, name: string): string {
   return device.id;
 }
 
-/** Adds one device and keeps its id, so the builders read by role and not by index. */
+/**
+ * Adds one device and returns its id. `addDevice` appends the new device and returns the lab it
+ * produced, so the device this call created is the last of the returned lab: reading it there is
+ * how a builder learns the id of the device it just added, instead of guessing a name the data
+ * of the level may change later (R2-003).
+ */
 function add(kind: DeviceKind, lab: Lab, position: Point): { lab: Lab; id: string } {
   const next = unwrap(addDevice(lab, kind, position));
   const created = next.devices[next.devices.length - 1];

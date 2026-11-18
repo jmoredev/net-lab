@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Lab } from '../../domain/lab';
-import { LEVELS, type Level, type LevelDifficulty } from '../../domain/levels';
+import { LEVELS, type Level, type LevelDifficulty, type LevelId } from '../../domain/levels';
 import { useI18n } from '../../i18n/LanguageProvider';
 import type { UiKey } from '../../i18n/types';
 import { needsReplaceConfirmation } from '../labComparison';
@@ -18,12 +18,60 @@ export interface LevelsDialogProps {
 }
 
 /**
- * The catalogue key of a level's title or brief (S71). The id comes from the level data, so
- * the key cannot be a literal here: this is the single seam between `LEVELS` and the
- * dictionaries, and both catalogues carry all ten ids.
+ * The catalogue keys of the title and the brief of every level (S71). Typed as a `Record` over
+ * `LevelId`, so a level whose id is in the union without an entry here fails to compile, and
+ * every value has to be an existing `UiKey`: the catalogue guarantee is the compiler's again,
+ * instead of a cast over an arbitrary string (R2-004).
  */
-export function levelTextKey(id: string, part: 'title' | 'brief'): UiKey {
-  return `levels.${id}.${part}` as UiKey;
+const LEVEL_TEXT_KEYS: Record<LevelId, { title: UiKey; brief: UiKey }> = {
+  'enchufa-portatil': {
+    title: 'levels.enchufa-portatil.title',
+    brief: 'levels.enchufa-portatil.brief',
+  },
+  'falta-cable-internet': {
+    title: 'levels.falta-cable-internet.title',
+    brief: 'levels.falta-cable-internet.brief',
+  },
+  'wifi-sin-enganchar': {
+    title: 'levels.wifi-sin-enganchar.title',
+    brief: 'levels.wifi-sin-enganchar.brief',
+  },
+  'switch-del-aula': {
+    title: 'levels.switch-del-aula.title',
+    brief: 'levels.switch-del-aula.brief',
+  },
+  'ip-puesta-a-mano': {
+    title: 'levels.ip-puesta-a-mano.title',
+    brief: 'levels.ip-puesta-a-mano.brief',
+  },
+  'lio-de-cables': {
+    title: 'levels.lio-de-cables.title',
+    brief: 'levels.lio-de-cables.brief',
+  },
+  'monta-el-aula': {
+    title: 'levels.monta-el-aula.title',
+    brief: 'levels.monta-el-aula.brief',
+  },
+  'reparto-de-direcciones': {
+    title: 'levels.reparto-de-direcciones.title',
+    brief: 'levels.reparto-de-direcciones.brief',
+  },
+  'la-red-del-otro-aula': {
+    title: 'levels.la-red-del-otro-aula.title',
+    brief: 'levels.la-red-del-otro-aula.brief',
+  },
+  'el-aula-rotulada': {
+    title: 'levels.el-aula-rotulada.title',
+    brief: 'levels.el-aula-rotulada.brief',
+  },
+};
+
+/**
+ * The catalogue key of a level's title or brief (S71), read from the typed table above. This is
+ * the single seam between `LEVELS` and the dictionaries, and both catalogues carry all ten ids.
+ */
+export function levelTextKey(id: LevelId, part: 'title' | 'brief'): UiKey {
+  return LEVEL_TEXT_KEYS[id][part];
 }
 
 /**

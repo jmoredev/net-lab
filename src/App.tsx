@@ -186,12 +186,18 @@ function NetLab() {
    * Enters a level: its initial lab is copied in through the same door as an imported case
    * (S68), so a level is a plain lab that can be edited, exported and stored as any other
    * (S70). The selector asked first when there was work to lose; the parent only loads.
+   *
+   * The case of the lab on screen goes with the lab it described: the panel of that case
+   * disappears, its key is cleared and a case exported from inside the level starts empty
+   * instead of carrying the title of a document the student is no longer working on
+   * (S50, D32, R3-002).
    */
   function enterLevel(level: Level): void {
     dispatch({ type: 'load', lab: structuredClone(level.startLab) });
     setTravel(null);
     setActiveLevelId(level.id);
     setLevelsOpen(false);
+    setCaseMeta(null);
     remember(withLastLevel(progress, level.id));
   }
 
@@ -287,6 +293,7 @@ function NetLab() {
         <GoalsPanel
           level={activeLevel}
           lab={state.lab}
+          progress={progress}
           onNext={followingLevel === null ? null : () => enterLevel(followingLevel)}
           onBackToLevels={() => setLevelsOpen(true)}
           onCompleted={completeLevel}

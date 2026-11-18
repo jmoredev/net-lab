@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import type { Lab } from '../../domain/lab';
-import { evaluateGoals, isLevelComplete, type Goal, type Level } from '../../domain/levels';
+import { LEVELS, evaluateGoals, isLevelComplete, type Goal, type Level } from '../../domain/levels';
 import { useI18n } from '../../i18n/LanguageProvider';
 import type { MessageKey, MessageParams } from '../../i18n/types';
+import type { LevelProgress } from '../levelProgress';
 import { levelTextKey, difficultyBadgeClass, difficultyTextKey } from './LevelsDialog';
 
 /**
@@ -40,6 +41,11 @@ export interface GoalsPanelProps {
   level: Level;
   /** The lab on screen: every render answers the goals against it, never against a cache (S69). */
   lab: Lab;
+  /**
+   * `superados` and `ultimo`: the walk is over only when every level of `LEVELS` is completed,
+   * and that is a question about the progress, not about standing on the last level (R3-001).
+   */
+  progress: LevelProgress;
   /** How to enter the next level, or `null` on the last one, which offers going back (S69). */
   onNext: (() => void) | null;
   onBackToLevels: () => void;
@@ -60,12 +66,18 @@ export interface GoalsPanelProps {
  * Leaving the level never touches the lab: both actions are navigation, and the editor below
  * stays exactly as the student left it (S70).
  */
-export function GoalsPanel({ level, lab, onNext, onBackToLevels, onCompleted }: GoalsPanelProps) {
+export function GoalsPanel({ level, lab, progress, onNext, onBackToLevels, onCompleted }: GoalsPanelProps) {
   const { t } = useI18n();
   const states = evaluateGoals(lab, level.goals);
   const complete = isLevelComplete(states);
   /** The level already reported as completed in this visit: a re-render does not report it twice. */
   const reported = useRef<string | null>(null);
+  /**
+   * The sentence «lo has completado todo» is about the ten levels, never about being on the
+   * tenth: the free jump of S67 lets a student land on the last level with nine still pending,
+   * and S69 marks each level on its own. So it needs every id of `LEVELS` in `superados`.
+   */
+  const allLevelsCompleted = LEVELS.every((entry) => progress.superados.includes(entry.id));
 
   useEffect(() => {
     if (!complete || reported.current === level.id) return;
@@ -123,7 +135,9 @@ export function GoalsPanel({ level, lab, onNext, onBackToLevels, onCompleted }: 
           <div className="goals__actions">
             {onNext === null ? (
               <>
-                <p className="goals__finished">{t('levels.finishedAll')}</p>
+                {allLevelsCompleted ? (
+                  <p className="goals__finished">{t('levels.finishedAll')}</p>
+                ) : null}
                 <button type="button" className="button" onClick={onBackToLevels}>
                   {t('levels.backToLevels')}
                 </button>

@@ -16,8 +16,18 @@ import type { Result } from '../../domain/types';
 import { ES } from '../../i18n/es';
 import { LanguageProvider } from '../../i18n/LanguageProvider';
 import type { UiKey } from '../../i18n/types';
-import { LevelsDialog } from '../components/LevelsDialog';
+import { LevelsDialog, levelTextKey } from '../components/LevelsDialog';
 import { emptyLevelProgress, type LevelProgress } from '../levelProgress';
+
+/**
+ * Compile-time only: this function is never called. `@ts-expect-error` fails `tsc` the moment
+ * `levelTextKey` accepts an arbitrary string again, which is the whole point of R2-004: a new
+ * level without catalogue keys has to fail to compile instead of rendering the raw key.
+ */
+export function levelTextKeyIsTyped(): void {
+  // @ts-expect-error a string that is not one of the ten level ids has no catalogue key
+  levelTextKey('no-such-level', 'title');
+}
 
 /** The ten titles of S72 and S74, in the order the selector has to show them. */
 const TITLES = [
@@ -165,6 +175,32 @@ describe('LevelsDialog: completed and last-visited marks (S66, S68)', () => {
 
     expect(screen.queryByText(ES['levels.completedBadge'])).toBeNull();
     expect(screen.queryByText(ES['levels.resume'])).toBeNull();
+  });
+});
+
+describe('LevelsDialog: the catalogue keys of a level are typed (S71, R2-004)', () => {
+  it('resolves the title and the brief of every level from the catalogue', () => {
+    for (const level of LEVELS) {
+      for (const part of ['title', 'brief'] as const) {
+        const key = levelTextKey(level.id, part);
+        // The convention `levels.<id>.<part>` is what the catalogues carry, and the type says
+        // so: every one of these keys is a `UiKey` and every `UiKey` exists in both languages.
+        expect(key, level.id).toBe(`levels.${level.id}.${part}`);
+        expect(ES[key], key).not.toBe(key);
+        expect(ES[key].length, key).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('writes the catalogue title on the card, never the raw key (S71)', () => {
+    renderDialog();
+
+    for (const level of LEVELS) {
+      const title = cardOf(ES[`levels.${level.id}.title` as UiKey]).querySelector(
+        '.level-card__title',
+      );
+      expect(title?.textContent, level.id).not.toContain('levels.');
+    }
   });
 });
 

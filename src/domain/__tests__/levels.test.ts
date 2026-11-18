@@ -9,6 +9,7 @@ import {
   addDevice,
   connectCable,
   createLab,
+  dhcpRangeIsValidFor,
   renameDevice,
   setAddressing,
   setDhcpRange,
@@ -308,6 +309,58 @@ describe('router-network goals (S73)', () => {
     ]);
 
     expect(states[0].met).toBe(false);
+  });
+});
+
+describe('the DHCP invariants are shared with the editor (S73, R2-002)', () => {
+  /** The ranges a student can reach or try to reach, valid and invalid, in one place. */
+  const RANGES: [number, number][] = [
+    [2, 100],
+    [2, 254],
+    [254, 254],
+    [1, 100],
+    [0, 255],
+    [100, 50],
+    [1, 1],
+    [255, 255],
+  ];
+
+  it('accepts exactly the ranges the mutator accepts, rule for rule', () => {
+    // One invariant, two readers: the editor that writes the range and the goal that asks for
+    // it cannot disagree, because neither of them carries its own copy of the rules.
+    for (const lanIp of ['192.168.1.1', '192.168.5.1', '192.168.1.50']) {
+      const lab = storedRange(createExampleLab(), lanIp, 2, 100);
+      for (const [start, end] of RANGES) {
+        const what = `${lanIp} ${start}-${end}`;
+        expect(dhcpRangeIsValidFor(lanIp, start, end), what).toBe(setDhcpRange(lab, start, end).ok);
+      }
+    }
+  });
+
+  it('agrees with the goal that asks for the same router network', () => {
+    for (const lanIp of ['192.168.1.1', '192.168.1.50']) {
+      const lab = storedRange(createExampleLab(), lanIp, 2, 100);
+      for (const [start, end] of RANGES) {
+        const what = `${lanIp} ${start}-${end}`;
+        const goal: Goal = { kind: 'router-network', lanIp, dhcpStart: start, dhcpEnd: end };
+        const accepted = evaluateGoals(storedRange(createExampleLab(), lanIp, start, end), [goal])[0].met;
+        expect(accepted, what).toBe(setDhcpRange(lab, start, end).ok);
+      }
+    }
+  });
+
+  it('lets a lab reached through the real mutators pass the goal for those same values', () => {
+    // The classroom of level 9: the router moved and its range set with the mutators the
+    // student uses, then asked for by the goal with the same numbers (S73, S74).
+    const moved = unwrap(setRouterLanIp(createExampleLab(), '192.168.5.1'));
+    const ranged = unwrap(setDhcpRange(moved, 100, 200));
+
+    const states = evaluateGoals(ranged, [
+      { kind: 'router-network', lanIp: '192.168.5.1', dhcpStart: 100, dhcpEnd: 200 },
+    ]);
+
+    expect(states[0].met).toBe(true);
+    expect(dhcpRangeIsValidFor('192.168.5.1', 100, 200)).toBe(true);
   });
 });
 
