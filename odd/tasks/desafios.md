@@ -54,7 +54,7 @@ Los niveles 1–4 son de cable y topología (ESO); 5–8 agregan direccionamient
 | T4 — Progreso en localStorage con tests | S66 | inline | 9d35ab1 |
 | T5 — Botón «Desafíos», selector de niveles y entrada con confirmación | S67 | inline | 6898194 |
 | T6 — Panel de objetivos vivo, banner de superado y siguiente nivel | S69 | inline | 6898194 |
-| T7 — Modo libre intacto: prueba diferencial del arranque y del flujo libre, docs y cierre | S70 | inline | pendiente |
+| T7 — Modo libre intacto: prueba diferencial del arranque y del flujo libre, docs y cierre | S70 | inline | 4fe1653 |
 
 Entrega: rama `feat/desafios`, tramos de PR de ~400 líneas revisables contra `origin/main`, mismo flujo que «Casos».
 
