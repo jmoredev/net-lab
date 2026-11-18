@@ -4,14 +4,14 @@ Simulador de red didáctico y liviano, al estilo Packet Tracer pero mucho más s
 
 Aplicación web estática (React + TypeScript + Vite), pensada para publicarse en GitHub Pages. Interfaz en español de España; código y tests en inglés.
 
-**Estado:** en construcción sobre una especificación cerrada. Dominio y UI funcionando, con 475 tests en verde.
+**Estado:** en construcción sobre una especificación cerrada. Dominio y UI funcionando, con 481 tests en verde.
 
 ## Uso en el aula
 
 ```
 pnpm install
 pnpm dev        # laboratorio en http://localhost:5173
-pnpm test       # 475 tests: dominio, estado de UI, animación, casos y niveles
+pnpm test       # 481 tests: dominio, estado de UI, animación, casos y niveles
 pnpm build      # estático listo para publicar
 ```
 
