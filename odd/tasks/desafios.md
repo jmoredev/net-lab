@@ -48,15 +48,16 @@ Los niveles 1–4 son de cable y topología (ESO); 5–8 agregan direccionamient
 
 | ID | Specs | Ruta | Commit |
 | --- | --- | --- | --- |
-| T1 — Modelo de nivel y evaluación de objetivos en dominio, con tests | S65 | inline | |
-| T2 — Los 8 niveles como datos, con tests de que cada inicial es arreglable y cada objetivo es alcanzable | S65, S72 | inline | |
-| T3 — Catálogos es/en: niveles, selector, panel de objetivos | S71 | inline | |
-| T4 — Progreso en localStorage con tests | S66 | inline | |
-| T5 — Botón «Desafíos», selector de niveles y entrada con confirmación | S67 | inline | |
-| T6 — Panel de objetivos vivo, banner de superado y siguiente nivel | S69 | inline | |
-| T7 — Modo libre intacto: prueba diferencial del arranque y del flujo libre, docs y cierre | S70 | inline | |
+| T1 — Modelo de nivel y evaluación de objetivos en dominio, con tests | S65 | inline | 69c565b |
+| T2 — Los 8 niveles como datos, con tests de que cada inicial es arreglable y cada objetivo es alcanzable | S65, S72 | inline | 69c565b |
+| T3 — Catálogos es/en: niveles, selector, panel de objetivos | S71 | inline | 9d35ab1 |
+| T4 — Progreso en localStorage con tests | S66 | inline | 9d35ab1 |
+| T5 — Botón «Desafíos», selector de niveles y entrada con confirmación | S67 | inline | 6898194 |
+| T6 — Panel de objetivos vivo, banner de superado y siguiente nivel | S69 | inline | 6898194 |
+| T7 — Modo libre intacto: prueba diferencial del arranque y del flujo libre, docs y cierre | S70 | inline | pendiente |
 
 Entrega: rama `feat/desafios`, tramos de PR de ~400 líneas revisables contra `origin/main`, mismo flujo que «Casos».
+
 
 ## Log
 
@@ -69,3 +70,12 @@ Entrega: rama `feat/desafios`, tramos de PR de ~400 líneas revisables contra `o
 **L2 — Corrección del usuario sobre el idioma de los textos (verbatim).** «Recuerda que para los textos debes de utilizar español de España». Aplica a todo texto de interfaz de Net-Lab, no solo a los niveles: la convención ya estaba en el catálogo actual (`es.ts` no lleva voseo) y queda fijada en S71 para todo lo nuevo. El idioma de esta conversación y de la bitácora sigue siendo el que ya venimos usando; los artefactos que mira el alumnado van en español de España.
 
 **L3 — Descubrimiento de implementación: el «puerto equivocado» no existe.** El nivel 2 propuesto originalmente («El puerto equivocado»: portátil cableado al puerto WAN) es **imposible de construir**: el dominio rechaza cablear el WAN a cualquier cosa que no sea el nodo Internet (`wan-only-internet`, `src/domain/lab.ts`), y esa guardia es parte del valor de la app — el alumnado no puede cometer ese error, no hay nada que enseñarle sobre él. Se reemplazó por «Falta el cable a Internet» (sin cable WAN), que sí es constructible y enseña `router-no-wan`. Descubierto en rojo por el propio test de T1, que falló con «El puerto WAN solo se conecta a Internet» y quedó fijando la guardia.
+
+**L4 — Cortes de entrega.** Dos commits ya hechos contra `origin/main`: `69c565b` (T1–T2, dominio: modelo, evaluación y los 8 niveles, 17 tests) y `9d35ab1` (T3–T4, catálogos y progreso). El tercero será la UI (T5–T6) y el cuarto el cierre (T7: diferencial del modo libre y docs). Cada corte es un tramo revisable como candidato propio, como en «Casos».
+
+
+**L5 — T5–T7 ejecutados por workers, verificados por el padre.** T5 y T6 («Desafíos» en la barra, selector `<dialog>` nativo con rejilla ordenada por `order`, entrada con confirmación `needsReplaceConfirmation` + `structuredClone` del laboratorio inicial, panel de objetivos re-evaluado en cada cambio, banner de superado con `role="status"`, progreso marcado una sola vez, «Siguiente nivel» y rejugado sin borrar progreso): 6898194, 30 tests nuevos, RED→GREEN por comportamiento. T7 (worker también): **D36 — cualquier puerta que cambie el laboratorio y no sea el propio nivel termina el nivel activo** (cargar el ejemplo, vaciar o importar un caso esconden el panel: el modo libre recupera la pantalla, S70) y **D37 — el estado de cada objetivo se anuncia** (`aria-label` con «Conseguido»/«Pendiente», claves `levels.goalMet`/`levels.goalPending`, S69), README con la sección «Desafíos» y contadores corregidos (449).
+
+**Diferencial del modo libre (S70).** El arranque no cambió y ninguna puerta del editor se tocó: los 414 tests previos pasan sin editar una línea (444 tras T5/T6, 449 tras T7), incluidos los de arranque, importación y casos; el botón nuevo vive en el grupo «Laboratorio» sin entrar al grupo «Caso» (prueba del header). Suite final: **449 tests en 35 archivos**, `tsc` limpio, build 100,17 KB gzip.
+
+**Pendiente de revisión nativa:** los cuatro tramos contra `origin/main` (RDD).

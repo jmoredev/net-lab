@@ -146,11 +146,22 @@ function NetLab() {
     [state.lab, statuses, t],
   );
 
+  /**
+   * Hands the screen back to the free editor (S70). Any door that puts on screen a lab that
+   * is not a level of the walk — the example, an imported case, an emptied lab — ends the
+   * level being played: its goals no longer describe what the student is looking at, and the
+   * panel would keep asking for something that is no longer the lesson.
+   */
+  function leaveLevel(): void {
+    setActiveLevelId(null);
+  }
+
   function resetLab() {
     if (hasDevices && !window.confirm(t('confirm.clearLab'))) return;
     dispatch({ type: 'reset' });
     clearLab();
     setTravel(null);
+    leaveLevel();
   }
 
   /** Loads the preconfigured example of S24, asking first when that would throw work away. */
@@ -158,6 +169,7 @@ function NetLab() {
     if (hasDevices && !window.confirm(t('confirm.loadExample'))) return;
     dispatch({ type: 'load', lab: createExampleLab() });
     setTravel(null);
+    leaveLevel();
   }
 
   /**
@@ -301,6 +313,8 @@ function NetLab() {
         onImport={(data) => {
           dispatch({ type: 'load', lab: data.lab });
           setCaseMeta(data.meta);
+          // The case of the file is what the student works on now, not the level (S70).
+          leaveLevel();
         }}
       />
 

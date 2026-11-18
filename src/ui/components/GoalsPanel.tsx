@@ -55,6 +55,7 @@ export function GoalsPanel({ level, lab, onNext, onBackToLevels, onCompleted }: 
             state.goal.kind === 'online'
               ? t('levels.goalOnline', { name })
               : t('levels.goalManualOnline', { name });
+          const stateWord = t(state.met ? 'levels.goalMet' : 'levels.goalPending');
           return (
             <li
               // The goals are data with a fixed order: the index is their identity in the list.
@@ -63,6 +64,10 @@ export function GoalsPanel({ level, lab, onNext, onBackToLevels, onCompleted }: 
               // The colour is the student's state; this attribute is the same answer for CSS
               // and for the tests, which never have to read a style to know a goal is met.
               data-met={state.met ? 'true' : 'false'}
+              // Green or red is invisible to a screen reader, so the line announces the state
+              // as a word too, like the WiFi marks of the canvas carry theirs (S34, S69).
+              // The visible line is unchanged: the state word lives only in the name.
+              aria-label={`${sentence} — ${stateWord}`}
             >
               {sentence}
             </li>

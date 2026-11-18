@@ -11,6 +11,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App';
+import { encodeCase, type CaseMeta } from '../../domain/case';
 import { addDevice, connectWifi, createLab, setAddressing, type Lab } from '../../domain/lab';
 import { LEVELS, type Level } from '../../domain/levels';
 import type { Result } from '../../domain/types';
@@ -46,13 +47,18 @@ function ownLab(): Lab {
   return unwrap(addDevice(createLab(), 'router', { x: 560, y: 160 }));
 }
 
-/** A caption of the canvas, which is an SVG `<text>` and not a paragraph (S29). */
-function canvasCaption(name: string): Element {
+/** The captions of the canvas for a device name, which are SVG `<text>` and not paragraphs (S29). */
+function canvasCaptions(name: string): Element[] {
   // Once a device has an address, the canvas writes `name · ip` (S29), so the name alone is
   // a prefix and not the whole caption.
-  const captions = Array.from(document.querySelectorAll('svg text')).filter(
+  return Array.from(document.querySelectorAll('svg text')).filter(
     (node) => node.textContent === name || node.textContent?.startsWith(`${name} · `) === true,
   );
+}
+
+/** A caption of the canvas, which is an SVG `<text>` and not a paragraph (S29). */
+function canvasCaption(name: string): Element {
+  const captions = canvasCaptions(name);
   if (captions.length === 0) throw new Error(`the canvas shows no caption ${name}`);
   return captions[0];
 }
@@ -69,6 +75,19 @@ function goalLine(sentence: string): HTMLElement {
 
 function metOf(sentence: string): string | null {
   return goalLine(sentence).getAttribute('data-met');
+}
+
+/**
+ * The accessible name of a goal line: the sentence the student reads plus the state word
+ * (S69). Colour alone never reaches assistive technology, so the name carries the answer.
+ */
+function goalLabel(sentence: string, state: string): string {
+  return `${sentence} — ${state}`;
+}
+
+/** The goal line, found through the accessibility tree by its full announcement (S69). */
+function goalAnnouncement(sentence: string, state: string): HTMLElement | null {
+  return within(goalsPanel()).queryByRole('listitem', { name: goalLabel(sentence, state) });
 }
 
 function statusBanner(): HTMLElement | null {
@@ -392,6 +411,22 @@ describe('GoalsPanel: the goals follow the lab (S69)', () => {
     expect(within(goalsPanel()).queryByRole('button', { name: ES['levels.next'] })).toBeNull();
   });
 
+  it('announces the state of every goal, pending first and met once it is met (S69)', () => {
+    const level = levelOf('ip-puesta-a-mano');
+    const { rerender } = renderPanel(level, level.startLab, vi.fn());
+
+    // A screen reader gets the state as words; the colour is the same answer for the eye.
+    expect(goalAnnouncement(manualSentence('Laptop-1'), ES['levels.goalPending'])).not.toBeNull();
+    expect(goalAnnouncement(manualSentence('Laptop-1'), ES['levels.goalMet'])).toBeNull();
+
+    rerender(fixedLevel5());
+
+    expect(goalAnnouncement(manualSentence('Laptop-1'), ES['levels.goalMet'])).not.toBeNull();
+    expect(goalAnnouncement(manualSentence('Laptop-1'), ES['levels.goalPending'])).toBeNull();
+    // The line still shows the sentence, and the colour classes are untouched.
+    expect(goalLine(manualSentence('Laptop-1')).className).toContain('goals__item--met');
+  });
+
   it('shows the brief and the goal list of the level (S69)', () => {
     const level = levelOf('switch-del-aula');
     renderPanel(level, level.startLab, vi.fn());
@@ -403,6 +438,102 @@ describe('GoalsPanel: the goals follow the lab (S69)', () => {
     expect(metOf(onlineSentence('PC-1'))).toBe('false');
     expect(metOf(onlineSentence('PC-2'))).toBe('false');
     expect(metOf(onlineSentence('PC-3'))).toBe('false');
+  });
+});
+
+/** A case of the student's own, encoded exactly as the app writes it (S50, S53). */
+function encodedCase(): string {
+  const meta: CaseMeta = {
+    titulo: 'La red de clase',
+    consigna: 'El portátil no llega a Internet.',
+    autor: 'Pareja 7',
+  };
+  const encoded = encodeCase({ meta, lab: ownLab() });
+  if (!encoded.ok) throw new Error(`no se pudo codificar el caso: ${encoded.failure.code}`);
+  return encoded.json;
+}
+
+/**
+ * The two doors of the free lab keep doing what they did before the levels existed (S24, S31):
+ * the example replaces the lab on screen and is stored, and emptying the lab deletes what was
+ * saved. Nothing of the walk is involved here.
+ */
+describe('the doors of the free lab are unchanged (S70)', () => {
+  it('loads the example and empties the lab with no level in sight', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: ES['header.loadExample'] }));
+
+    expect(canvasCaption('Switch-1')).not.toBeNull();
+    await waitFor(() =>
+      expect(window.localStorage.getItem(STORAGE_KEY)).toContain('Switch-1'),
+    );
+
+    await user.click(screen.getByRole('button', { name: ES['header.clearLab'] }));
+
+    expect(canvasCaptions('Router')).toHaveLength(0);
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+});
+
+/**
+ * Another door replaced the lab on screen, so the level is over and the free editor owns the
+ * screen again (S70): the goals panel is gone and nothing of the level stays behind.
+ */
+describe('another door ends the level (S70)', () => {
+  it('ends the level when the example is loaded', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App />);
+
+    await enterLevel(user, ES['levels.enchufa-portatil.title']);
+    expect(goalsPanel()).not.toBeNull();
+
+    await user.click(screen.getByRole('button', { name: ES['header.loadExample'] }));
+
+    expect(screen.queryByRole('region', { name: ES['levels.panelTitle'] })).toBeNull();
+    // The example of S24 is on screen, not the level: its switch is on the canvas.
+    expect(canvasCaption('Switch-1')).not.toBeNull();
+  });
+
+  it('ends the level when the lab is emptied', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App />);
+
+    await enterLevel(user, ES['levels.enchufa-portatil.title']);
+    expect(goalsPanel()).not.toBeNull();
+
+    await user.click(screen.getByRole('button', { name: ES['header.clearLab'] }));
+
+    expect(screen.queryByRole('region', { name: ES['levels.panelTitle'] })).toBeNull();
+    expect(canvasCaptions('Router')).toHaveLength(0);
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+
+  it('ends the level when a case is imported', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<App />);
+
+    await enterLevel(user, ES['levels.enchufa-portatil.title']);
+    expect(goalsPanel()).not.toBeNull();
+
+    await user.click(screen.getByRole('button', { name: ES['header.importCase'] }));
+    fireEvent.change(screen.getByLabelText(ES['import.fieldLabel']), {
+      target: { value: encodedCase() },
+    });
+    await user.click(screen.getByRole('button', { name: ES['import.action'] }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: ES['levels.panelTitle'] })).toBeNull(),
+    );
+    // The case of the file is what the student works on now: its brief is on screen and the
+    // laptop of the level is gone from the canvas (S56, S70).
+    expect(screen.getByRole('heading', { name: 'La red de clase' })).not.toBeNull();
+    expect(canvasCaptions('Laptop-1')).toHaveLength(0);
   });
 });
 

@@ -145,6 +145,8 @@ export type UiKey =
   | 'levels.completedBadge'
   | 'levels.goalOnline'
   | 'levels.goalManualOnline'
+  | 'levels.goalMet'
+  | 'levels.goalPending'
   | 'levels.panelTitle'
   | 'levels.done'
   | 'levels.next'

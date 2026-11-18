@@ -160,6 +160,9 @@ export const ES: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'levels.completedBadge': 'Superado',
   'levels.goalOnline': '{name} llega a Internet',
   'levels.goalManualOnline': '{name} navega con su IP manual',
+  // The state of a goal, said out loud: colour alone never reaches a screen reader (S69).
+  'levels.goalMet': 'Conseguido',
+  'levels.goalPending': 'Pendiente',
   'levels.panelTitle': 'Objetivos del nivel',
   'levels.done': '¡Nivel superado!',
   'levels.next': 'Siguiente nivel',
