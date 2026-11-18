@@ -4,18 +4,28 @@ Simulador de red didáctico y liviano, al estilo Packet Tracer pero mucho más s
 
 Aplicación web estática (React + TypeScript + Vite), pensada para publicarse en GitHub Pages. Interfaz en español de España; código y tests en inglés.
 
-**Estado:** en construcción sobre una especificación cerrada. Dominio y UI funcionando, con 124 tests en verde.
+**Estado:** en construcción sobre una especificación cerrada. Dominio y UI funcionando, con 481 tests en verde.
 
 ## Uso en el aula
 
 ```
 pnpm install
 pnpm dev        # laboratorio en http://localhost:5173
-pnpm test       # 124 tests del dominio, del estado de UI y de la animación
+pnpm test       # 481 tests: dominio, estado de UI, animación, casos y niveles
 pnpm build      # estático listo para publicar
 ```
 
 El laboratorio se guarda solo en el navegador (`localStorage`): al recargar se recupera tal como estaba. El botón `Vaciar laboratorio` también borra lo guardado.
+
+## Desafíos
+
+El botón `Desafíos` de la barra superior abre diez niveles de dificultad creciente, de la ESO a Bachillerato: desde enchufar el primer portátil hasta repartir a mano las direcciones de un aula entera, pasando por configurar la red del router, pedir una dirección exacta y poner nombre a los equipos. Cada nivel trae su laboratorio inicial y una lista de objetivos que se revisa sola: en cuanto un equipo llega a Internet, su objetivo se pone en verde, y con todos en verde el nivel queda superado. Los objetivos no son solo de cable: también piden una IP manual concreta, una red y un rango DHCP determinados, o que un equipo se llame de una manera.
+
+Se puede saltar al nivel que se quiera desde el primer día: la numeración es una sugerencia de recorrido, no un candado. El progreso (qué niveles están superados y por dónde ibas) se guarda en este navegador, sin cuentas ni registro, y sobrevive a una recarga.
+
+Cada nivel indica su dificultad con una insignia que lleva la palabra y el color: fácil en verde, medio en naranja y difícil en rojo, según lo que pide superarlo y no según su número.
+
+El modo libre sigue siendo la pantalla inicial y funciona exactamente igual: los desafíos son una capa que se abre cuando se quiere. El laboratorio de un nivel es un laboratorio normal, así que también se puede exportar como caso. Y si con un nivel abierto se carga el ejemplo, se abre un caso o se vacía el laboratorio, el nivel se cierra y el modo libre recupera la pantalla.
 
 ## Publicación
 

@@ -145,6 +145,65 @@ export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'send.noRoute': 'There is no route to {name}.',
   'send.unknownDestination': 'the destination',
 
+  // Levels (S71): the «Desafíos» entry, its selector, the goal panel and its banner, then the
+  // ten levels of S72 and S74 with one title and one brief each. The goal lines are templates:
+  // the panel fills `{name}` with the device the level asks about.
+  'levels.action': 'Challenges',
+  'levels.selectorTitle': 'Challenges',
+  'levels.selectorHint': 'Pick a level: you can jump to any of them and come back another day.',
+  'levels.resume': 'Continue here',
+  'levels.completedBadge': 'Completed',
+  // S75: the difficulty of each level, always as a word; colour only reinforces it.
+  'levels.difficultyEasy': 'Easy',
+  'levels.difficultyMedium': 'Medium',
+  'levels.difficultyHard': 'Hard',
+  'levels.goalOnline': '{name} reaches the Internet',
+  'levels.goalManualOnline': '{name} browses with its manual IP',
+  // S73: the three goals of concrete configuration, with the parameters the panel fills in.
+  'levels.goalAddressIs': '{name} browses with exactly the IP {ip} and the gateway {gateway}',
+  'levels.goalRouterNetwork': 'The router network is {ip} and its DHCP range runs from {start} to {end}',
+  'levels.goalDeviceNamed': '{name} is renamed to {target}',
+  // The state of a goal, said out loud: colour alone never reaches a screen reader (S69).
+  'levels.goalMet': 'Done',
+  'levels.goalPending': 'Pending',
+  'levels.panelTitle': 'Level goals',
+  'levels.done': 'Level complete!',
+  'levels.next': 'Next level',
+  'levels.backToLevels': 'Back to the levels',
+  'levels.finishedAll': 'You have completed every level.',
+
+  'levels.enchufa-portatil.title': 'Plug in the laptop',
+  'levels.enchufa-portatil.brief':
+    'The laptop has no cable at all. Connect it to the router so it can reach the Internet.',
+  'levels.falta-cable-internet.title': 'The Internet cable is missing',
+  'levels.falta-cable-internet.brief':
+    'The local network is wired up just fine, but the router cannot reach the Internet. Check its connections.',
+  'levels.wifi-sin-enganchar.title': 'WiFi not joined',
+  'levels.wifi-sin-enganchar.brief':
+    'The laptop has its WiFi switched on, but it has not joined the router network.',
+  'levels.switch-del-aula.title': 'The classroom switch',
+  'levels.switch-del-aula.brief':
+    'Cable the three PCs to the switch and the switch to the router, so the whole class can browse.',
+  'levels.ip-puesta-a-mano.title': 'The hand-set IP',
+  'levels.ip-puesta-a-mano.brief':
+    'The laptop has a manual IP from another network. Fix it so it can browse, without switching to DHCP.',
+  'levels.lio-de-cables.title': 'A tangle of cables',
+  'levels.lio-de-cables.brief':
+    'Three devices and three different problems: no cable, no radio and the wrong IP.',
+  'levels.monta-el-aula.title': 'Set up classroom 2.º B',
+  'levels.monta-el-aula.brief':
+    'Build the whole network: the switch, both PCs by cable, the laptop over WiFi and the line to the Internet.',
+  'levels.reparto-de-direcciones.title': 'Sharing out the addresses',
+  'levels.reparto-de-direcciones.brief':
+    'Two laptops with manual IPs on the wrong networks and a phone that has not joined. Fix all three.',
+
+  'levels.la-red-del-otro-aula.title': 'The other classroom network',
+  'levels.la-red-del-otro-aula.brief':
+    'The classroom next door uses another network: move the router to 192.168.5.1, set its DHCP range from 100 to 200 and give the laptop exactly 192.168.5.10.',
+  'levels.el-aula-rotulada.title': 'The labelled classroom',
+  'levels.el-aula-rotulada.brief':
+    'Before sharing the network, give everything a name of its own: the router must be called Router-2B and the teacher PC, PC-Docente.',
+
   // Domain diagnostics (S22)
   'ethernet-disabled': 'Ethernet is switched off on this device.',
   'wifi-disabled': 'WiFi is switched off on this device.',

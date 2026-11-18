@@ -37,6 +37,16 @@ describe('header: the lab and the case file are two groups', () => {
     ]);
   });
 
+  it('keeps the «Desafíos» entry in the lab group, not among the case files', () => {
+    render(<App />);
+
+    const lab = screen.getByRole('group', { name: ES['header.labGroup'] });
+    const file = screen.getByRole('group', { name: ES['header.caseGroup'] });
+
+    expect(within(lab).getByRole('button', { name: ES['levels.action'] })).not.toBeNull();
+    expect(within(file).queryByRole('button', { name: ES['levels.action'] })).toBeNull();
+  });
+
   it('reads the lab first, the file second, and leaves the language outside both', () => {
     render(<App />);
 

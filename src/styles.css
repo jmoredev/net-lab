@@ -7,6 +7,11 @@
   --accent: #1f6feb;
   --state-online: #1a7f37;
   --state-offline: #c62828;
+  /* The three difficulties of a level (S75): green, orange and red. They colour the badge of a
+     card, which always writes the word, so the colour is reinforcement and never the answer. */
+  --level-easy: #1a7f37;
+  --level-medium: #b45309;
+  --level-hard: #c62828;
   --radius: 10px;
   --space: 8px;
 
@@ -817,5 +822,179 @@ body {
   margin: 0;
   padding: 8px 16px 0;
   font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
+/* The level selector of S68: a grid ordered by the data, one card per level. No card is ever
+   disabled (S67), so the only marks a card carries are a completed level and the last visit. */
+.dialog--levels {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.levels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.levels__item {
+  display: flex;
+}
+
+.level-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 12px;
+  font: inherit;
+  color: var(--text);
+  text-align: left;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.level-card:hover {
+  border-color: var(--accent);
+}
+
+.level-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.level-card__order {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.level-card__title {
+  font-weight: 600;
+}
+
+/* The two marks of the progress store (S66): completed, and where the student left off. */
+.level-card__badge {
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--state-online);
+  border: 1px solid var(--state-online);
+  border-radius: 999px;
+}
+
+.level-card__resume {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* The declared difficulty of a level (S75), the same badge on a selector card and next to the
+   title of the panel: a chip that always carries the word, tinted green, orange or red. The
+   border inherits the colour of its modifier, so the three tiers are defined once. */
+.difficulty-badge {
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}
+
+.difficulty-badge--easy {
+  color: var(--level-easy);
+}
+
+.difficulty-badge--medium {
+  color: var(--level-medium);
+}
+
+.difficulty-badge--hard {
+  color: var(--level-hard);
+}
+
+/* The live goals of the level on screen (S69): a band above the editor, like the case brief,
+   so the panel describes the lab without taking room from the canvas it describes. */
+.goals {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+}
+
+.goals__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.goals__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.goals__brief {
+  margin: 0;
+  max-width: 90ch;
+}
+
+.goals__subtitle {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.goals__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.goals__item {
+  font-size: 0.875rem;
+}
+
+/* Green and red, and the panel also answers in words through the goal sentence (S69). */
+.goals__item--met {
+  color: var(--state-online);
+}
+
+.goals__item--pending {
+  color: var(--state-offline);
+}
+
+.goals__banner {
+  margin: 6px 0 0;
+  font-weight: 600;
+  color: var(--state-online);
+}
+
+.goals__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.goals__finished {
+  margin: 0;
+  font-size: 0.875rem;
   color: var(--text-muted);
 }
