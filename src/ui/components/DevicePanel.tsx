@@ -1,13 +1,19 @@
 import { useEffect, useState, type Dispatch } from 'react';
-import type { DeviceStatus } from '../../domain/diagnostics';
+import type { DeviceStatus, Diagnosis } from '../../domain/diagnostics';
 import { availablePorts, getDevice, portsOf, type Lab } from '../../domain/lab';
-import { CAPABILITIES, type AddressingMode, type Device } from '../../domain/types';
+import {
+  CAPABILITIES,
+  type AddressingMode,
+  type Device,
+  type DiagnosticMessageCode,
+} from '../../domain/types';
 import { resolveDiagnosis } from '../../i18n';
 import { useI18n } from '../../i18n/LanguageProvider';
 import type { Lang, MessageKey, MessageParams } from '../../i18n/types';
 import { ANALOGIES, type AnalogyKey } from '../analogies';
 import { deviceKindLabel, modeLabel, deviceLabel, portLabel } from '../format';
 import type { LabAction, LabState } from '../labReducer';
+import { hintKey, optionKey, quizAppliesTo, quizOptions, reasonHidden, type QuizGate } from '../quiz';
 
 /**
  * Why a packet could not leave: the diagnosis of the device that blocks it, or the fact
@@ -17,6 +23,12 @@ import type { LabAction, LabState } from '../labReducer';
 export interface SendProblem {
   key: MessageKey;
   params?: MessageParams;
+  /**
+   * The device whose diagnosis blocks the packet, while its reason has to stay hidden (S76,
+   * D41). The send result names it and sends the student to the quiz instead of printing the
+   * reason.
+   */
+  blocker?: { id: string; name: string; code: DiagnosticMessageCode };
 }
 
 export interface DevicePanelProps {
@@ -27,9 +39,24 @@ export interface DevicePanelProps {
   busy: boolean;
   /** Starts a trip; returns the reason shown when there is no route, or null on success. */
   onSend: (fromId: string, toId: string) => SendProblem | null;
+  /** The reveal gate of the session: which pairs may show their reason (S79). */
+  quiz: QuizGate;
+  /** True while a level is being played: there every reason opens the quiz (D41). */
+  inLevel: boolean;
+  /** Called after the gate changes, so the panel and the send result read it again. */
+  onQuizChange: () => void;
 }
 
-export function DevicePanel({ state, statuses, dispatch, busy, onSend }: DevicePanelProps) {
+export function DevicePanel({
+  state,
+  statuses,
+  dispatch,
+  busy,
+  onSend,
+  quiz,
+  inLevel,
+  onQuizChange,
+}: DevicePanelProps) {
   const { t, lang } = useI18n();
   const { lab } = state;
   const device = state.selectedId ? getDevice(lab, state.selectedId) : undefined;
@@ -64,7 +91,15 @@ export function DevicePanel({ state, statuses, dispatch, busy, onSend }: DeviceP
         {status?.reason ? (
           // The row of S22 comes from the catalogue of the active language, never from
           // `reason.text`, which is only the Spanish fallback of the domain (S38, S40).
-          <p className="panel__reason">{resolveDiagnosis(lang, status.reason)}</p>
+          // Since S76 the row is not free: the panel asks first and reveals on a risk, for
+          // the reasons that are worth asking about in the mode on screen (D41).
+          <DiagnosisSection
+            deviceId={device.id}
+            diagnosis={status.reason}
+            quiz={quiz}
+            inLevel={inLevel}
+            onQuizChange={onQuizChange}
+          />
         ) : null}
       </section>
 
@@ -87,6 +122,8 @@ export function DevicePanel({ state, statuses, dispatch, busy, onSend }: DeviceP
           statuses={statuses}
           busy={busy}
           onSend={onSend}
+          quiz={quiz}
+          inLevel={inLevel}
         />
       )}
 
@@ -109,6 +146,126 @@ export function DevicePanel({ state, statuses, dispatch, busy, onSend }: DeviceP
         ))}
       </section>
     </aside>
+  );
+}
+
+/**
+ * S76–S80: the reason of a failing device is not given away. While the pair `(device, code)`
+ * is pending, the panel asks the student to predict it — with an optional hint — and the first
+ * answer reveals the real sentence with its values, whether it was right or wrong. The feedback
+ * of that moment lives here and nowhere else: coming back to the device later shows the
+ * diagnosis directly, until a new reason code reopens the question (S79).
+ */
+function DiagnosisSection({
+  deviceId,
+  diagnosis,
+  quiz,
+  inLevel,
+  onQuizChange,
+}: {
+  deviceId: string;
+  diagnosis: Diagnosis;
+  quiz: QuizGate;
+  inLevel: boolean;
+  onQuizChange: () => void;
+}) {
+  const { t, lang } = useI18n();
+  /** The option this student picked for the pair on screen; `null` when it is looked at again. */
+  const [picked, setPicked] = useState<DiagnosticMessageCode | null>(null);
+  useEffect(() => setPicked(null), [deviceId, diagnosis.code]);
+
+  // D41: a reason that is never asked about — the evident mistake of the free lab — renders
+  // exactly as it did before this feature: the sentence, with no question and no gate write.
+  if (!quizAppliesTo(diagnosis.code, inLevel)) {
+    return <p className="panel__reason">{resolveDiagnosis(lang, diagnosis)}</p>;
+  }
+
+  if (quiz.isPending(deviceId, diagnosis.code)) {
+    return (
+      <QuizQuestion
+        deviceId={deviceId}
+        code={diagnosis.code}
+        quiz={quiz}
+        onQuizChange={onQuizChange}
+        onPick={(option) => {
+          quiz.reveal(deviceId, diagnosis.code);
+          setPicked(option);
+          onQuizChange();
+        }}
+      />
+    );
+  }
+
+  return (
+    <>
+      {/* A miss hides nothing, and both feedbacks are announced: colour is never the message. */}
+      {picked === null ? null : (
+        <>
+          <p className="panel__feedback" role="status">
+            {t(picked === diagnosis.code ? 'quiz.hit' : 'quiz.miss')}
+          </p>
+          <p className="panel__reveal">{t('quiz.reveal')}</p>
+        </>
+      )}
+      <p className="panel__reason">{resolveDiagnosis(lang, diagnosis)}</p>
+    </>
+  );
+}
+
+/**
+ * The question of S76–S78: the symptom is already on the panel, the reason is behind one risk.
+ * The options are buttons whose label is their accessible name, the truth is always among them
+ * and the hint is offered once per pair.
+ */
+function QuizQuestion({
+  deviceId,
+  code,
+  quiz,
+  onQuizChange,
+  onPick,
+}: {
+  deviceId: string;
+  code: DiagnosticMessageCode;
+  quiz: QuizGate;
+  onQuizChange: () => void;
+  onPick: (option: DiagnosticMessageCode) => void;
+}) {
+  const { t } = useI18n();
+  const options = quizOptions(deviceId, code);
+  const hintAsked = quiz.hasHint(deviceId, code);
+
+  return (
+    <div className="quiz">
+      <p className="quiz__question">{t('quiz.question')}</p>
+      <ul className="quiz__options">
+        {options.map((option) => (
+          <li key={option}>
+            <button
+              type="button"
+              className="button button--wide quiz__option"
+              onClick={() => onPick(option)}
+            >
+              {t(optionKey(option))}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {/* One hint per pair: once asked it stays on screen and is never offered again (S78). */}
+      {hintAsked ? (
+        <p className="quiz__hint">{t(hintKey(code))}</p>
+      ) : (
+        <button
+          type="button"
+          className="button button--wide"
+          onClick={() => {
+            quiz.showHint(deviceId, code);
+            onQuizChange();
+          }}
+        >
+          {t('quiz.hintAction')}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -603,6 +760,9 @@ interface SendSectionProps {
   statuses: Record<string, DeviceStatus>;
   busy: boolean;
   onSend: (fromId: string, toId: string) => SendProblem | null;
+  quiz: QuizGate;
+  /** True while a level is being played: there every reason opens the quiz (D41). */
+  inLevel: boolean;
 }
 
 /**
@@ -631,13 +791,28 @@ function sendTargets(
   return targets;
 }
 
+/**
+ * The name of the device that blocks the packet while its reason is still hidden, or `null`
+ * when there is nothing to hide: the send result must not print a reason nobody revealed yet
+ * (S76, D41), so it names the culprit and sends the student to the quiz of its panel. In the
+ * free lab an evident reason is not hidden and is printed as it always was.
+ */
+function pendingBlockerName(problem: SendProblem, quiz: QuizGate, inLevel: boolean): string | null {
+  const blocker = problem.blocker;
+  if (blocker === undefined) return null;
+  return reasonHidden(quiz, blocker.id, blocker.code, inLevel) ? blocker.name : null;
+}
+
 /** Send control of S23: choose a destination, launch the round trip, or say why it cannot go. */
-function SendSection({ device, lab, statuses, busy, onSend }: SendSectionProps) {
+function SendSection({ device, lab, statuses, busy, onSend, quiz, inLevel }: SendSectionProps) {
   const { t, lang } = useI18n();
   const [chosenId, setChosenId] = useState<string | null>(null);
   const [failure, setFailure] = useState<{ originId: string; problem: SendProblem } | null>(null);
   const targets = sendTargets(lab, device, statuses, lang, t('kind.internet'));
   const destination = targets.find((target) => target.id === chosenId) ?? targets[0];
+  /** The refusal on screen, while it belongs to the device whose panel is open. */
+  const refusal = failure !== null && failure.originId === device.id ? failure.problem : null;
+  const hiddenBlocker = refusal === null ? null : pendingBlockerName(refusal, quiz, inLevel);
 
   // Any change in the lab can open a route, so a previous refusal is never left on screen.
   useEffect(() => setFailure(null), [lab]);
@@ -686,9 +861,15 @@ function SendSection({ device, lab, statuses, busy, onSend }: SendSectionProps) 
       ) : (
         <p className="panel__note">{t('panel.noTargets')}</p>
       )}
-      {failure && failure.originId === device.id ? (
-        <p className="panel__reason">{t(failure.problem.key, failure.problem.params)}</p>
-      ) : null}
+      {/* The reason of a pending pair is not printed here either (S76): the result names the
+          device that blocks the packet and points at the quiz of its panel. */}
+      {refusal === null ? null : (
+        <p className="panel__reason">
+          {hiddenBlocker === null
+            ? t(refusal.key, refusal.params)
+            : t('quiz.blockedSend', { name: hiddenBlocker })}
+        </p>
+      )}
     </section>
   );
 }

@@ -217,6 +217,44 @@ export const EN: Record<UiKey | DomainMessageCode | CaseMessageCode, string> = {
   'router-no-wan': 'The router is not connected to the Internet: the WAN cable is missing.',
   'router-no-wan-address': 'The router has no address on the WAN yet.',
 
+  // The socratic diagnosis (S76–S80). The question and the blocked send carry no reason; the
+  // short labels carry no parameter either, so the address, the port and the name of a device
+  // only appear in the sentence of the reveal (S77, S80).
+  'quiz.question': 'Why do you think it cannot reach the Internet?',
+  'quiz.hintAction': 'Give me a hint',
+  'quiz.hit': 'You got it!',
+  'quiz.miss': 'Not that one',
+  'quiz.reveal': 'This is the real problem:',
+  'quiz.blockedSend':
+    'The packet did not leave: {name} cannot reach the Internet. Take a guess at its diagnosis to see why.',
+
+  // The eleven short labels of S77, one per code of the table above.
+  'quiz.option.ethernet-disabled': 'The cable connection is switched off',
+  'quiz.option.wifi-disabled': 'The WiFi is switched off',
+  'quiz.option.not-connected': 'It is not connected to any network',
+  'quiz.option.router-wifi-off': "The router's WiFi is switched off",
+  'quiz.option.dead-end-cable': 'Its cable does not reach the router',
+  'quiz.option.no-lease': 'It gets no address from the router',
+  'quiz.option.ip-outside-subnet': 'Its IP is from another network',
+  'quiz.option.ip-duplicate': 'Its IP is repeated',
+  'quiz.option.gateway-wrong': 'Its gateway is wrong',
+  'quiz.option.router-no-wan': 'The router has no line to the Internet',
+  'quiz.option.router-no-wan-address': 'The router did not ask for its public address',
+
+  // The eleven hints of S78: they point at where to look without naming the reason.
+  'quiz.hint.ethernet-disabled': 'See whether this machine has its cable connection switched on.',
+  'quiz.hint.wifi-disabled': 'The radio can be switched off too: see which connections are on.',
+  'quiz.hint.not-connected': 'No path reaches the router: check the cables and the WiFi.',
+  'quiz.hint.router-wifi-off': 'The problem may not be in this device: look at the router.',
+  'quiz.hint.dead-end-cable': 'Follow the cable with your finger: where does it end?',
+  'quiz.hint.no-lease': 'The router hands out addresses: is this device getting one?',
+  'quiz.hint.ip-outside-subnet': 'Compare the first three numbers of the IP with the router ones.',
+  'quiz.hint.ip-duplicate': 'Two devices cannot carry the same address.',
+  'quiz.hint.gateway-wrong': 'The gateway has to be the one of the router.',
+  'quiz.hint.router-no-wan': 'The router needs its own line to the Internet too.',
+  'quiz.hint.router-no-wan-address':
+    'The WAN cable is plugged in: what else does the router need to get out?',
+
   // Domain validation failures
   'internet-not-addable': 'The Internet node cannot be added.',
   'router-already-exists': 'The lab already has a router.',

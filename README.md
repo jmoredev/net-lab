@@ -4,14 +4,16 @@ Simulador de red didáctico y liviano, al estilo Packet Tracer pero mucho más s
 
 Aplicación web estática (React + TypeScript + Vite), pensada para publicarse en GitHub Pages. Interfaz en español de España; código y tests en inglés.
 
-**Estado:** en construcción sobre una especificación cerrada. Dominio y UI funcionando, con 481 tests en verde.
+El diagnóstico no se regala: al abrir un equipo que falla, el panel pregunta primero por qué crees que no llega a Internet, ofrece una pista si se pide y enseña la frase completa del problema real —con su IP, su puerto o el nombre del equipo— solo después de que arriesgues tu predicción, y sin guardar nada: el quiz vive en la memoria de la sesión y al recargar la página se vuelve a preguntar.
+
+**Estado:** en construcción sobre una especificación cerrada. Dominio y UI funcionando, con 514 tests en verde.
 
 ## Uso en el aula
 
 ```
 pnpm install
 pnpm dev        # laboratorio en http://localhost:5173
-pnpm test       # 481 tests: dominio, estado de UI, animación, casos y niveles
+pnpm test       # 514 tests: dominio, estado de UI, animación, casos y niveles
 pnpm build      # estático listo para publicar
 ```
 

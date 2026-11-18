@@ -269,6 +269,9 @@ describe('manual addressing', () => {
     await user.clear(manualIp);
     await user.type(manualIp, '10.0.0.5{Enter}');
 
+    // The row is behind the question now (S76): the student risks the diagnosis to read it.
+    await user.click(screen.getByRole('button', { name: 'Su IP es de otra red' }));
+
     expect(screen.getByText('La IP 10.0.0.5 no pertenece a la subred 192.168.1.0.')).not.toBeNull();
   });
 
@@ -285,6 +288,8 @@ describe('manual addressing', () => {
     const gateway = screen.getByLabelText('Puerta de enlace');
     await user.clear(gateway);
     await user.type(gateway, '192.168.1.99{Enter}');
+    // Row 8 is behind the question too (S76): one risk reveals the sentence of the reason.
+    await user.click(screen.getByRole('button', { name: 'Su puerta de enlace está mal' }));
 
     expect(
       screen.getByText('La puerta de enlace 192.168.1.99 no es la del router (192.168.1.1).'),

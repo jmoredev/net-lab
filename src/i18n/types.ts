@@ -5,7 +5,7 @@
  * literal left in a component is a bug and a key missing from a dictionary fails to compile.
  */
 
-import type { CaseMessageCode, DomainMessageCode } from '../domain/types';
+import type { CaseMessageCode, DiagnosticMessageCode, DomainMessageCode } from '../domain/types';
 
 export type Lang = 'es' | 'en';
 
@@ -180,7 +180,18 @@ export type UiKey =
   | 'levels.la-red-del-otro-aula.title'
   | 'levels.la-red-del-otro-aula.brief'
   | 'levels.el-aula-rotulada.title'
-  | 'levels.el-aula-rotulada.brief';
+  | 'levels.el-aula-rotulada.brief'
+  // The socratic diagnosis (S76–S80): the question of the panel, the hint button, the feedback
+  // of the risk, the reveal line and the blocked send, then one short label and one hint for
+  // each of the eleven rows of the diagnostic table, named after the code they belong to.
+  | 'quiz.question'
+  | 'quiz.hintAction'
+  | 'quiz.hit'
+  | 'quiz.miss'
+  | 'quiz.reveal'
+  | 'quiz.blockedSend'
+  | `quiz.option.${DiagnosticMessageCode}`
+  | `quiz.hint.${DiagnosticMessageCode}`;
 
 /** Any key of the catalogue: an interface string, a domain message or a case failure (S57). */
 export type MessageKey = UiKey | DomainMessageCode | CaseMessageCode;
