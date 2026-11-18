@@ -1,5 +1,5 @@
-import { INTERNET_ID } from './lab';
-import { hostOctet, isHostIp, isIpv4, networkOf } from './subnet';
+import { INTERNET_ID, dhcpRangeProblemFor } from './lab';
+import { isHostIp, isIpv4, networkOf } from './subnet';
 import {
   CAPABILITIES,
   type Device,
@@ -258,22 +258,29 @@ function readRouter(value: unknown, devices: Device[]): RouterSettings | null | 
   if (!Number.isInteger(dhcpStart)) return problem('lab.router.dhcpStart');
   if (!Number.isInteger(dhcpEnd)) return problem('lab.router.dhcpEnd');
 
+  // Those two guards stay here: not being a whole number is a structural answer about one field,
+  // with its own path and no message code, while the shared helper folds the same test into
+  // `dhcp-range-outside-subnet`, which is a different answer for the same input.
+
+  // The range rules are not repeated here (R2-002): `dhcpRangeProblemFor` is the single copy the
+  // editor and the level goals read, and this validator only turns each answer into its own
+  // path, code and params, so the codec and the editor cannot disagree about a range.
   const network = networkOf(lanIp);
   const hosts = { start: dhcpStart, end: dhcpEnd };
-  const isHostNumber = (octet: number) => octet >= 2 && octet <= 254;
-  if (!isHostNumber(dhcpStart) || !isHostNumber(dhcpEnd)) {
-    return problem(
-      'lab.router.dhcpStart',
-      'dhcp-range-outside-subnet',
-      network === null ? undefined : { network, ...hosts },
-    );
+  switch (dhcpRangeProblemFor(lanIp, dhcpStart, dhcpEnd)) {
+    case 'dhcp-range-outside-subnet':
+      return problem(
+        'lab.router.dhcpStart',
+        'dhcp-range-outside-subnet',
+        network === null ? undefined : { network, ...hosts },
+      );
+    case 'dhcp-range-includes-router':
+      return problem('lab.router.dhcpStart', 'dhcp-range-includes-router', { routerIp: lanIp, ...hosts });
+    case 'dhcp-range-inverted':
+      return problem('lab.router.dhcpStart', 'dhcp-range-inverted', hosts);
+    case null:
+      break;
   }
-
-  const routerHost = hostOctet(lanIp);
-  if (routerHost !== null && dhcpStart <= routerHost && routerHost <= dhcpEnd) {
-    return problem('lab.router.dhcpStart', 'dhcp-range-includes-router', { routerIp: lanIp, ...hosts });
-  }
-  if (dhcpStart > dhcpEnd) return problem('lab.router.dhcpStart', 'dhcp-range-inverted', hosts);
 
   const ssid = value.ssid;
   if (typeof ssid !== 'string') return problem('lab.router.ssid');

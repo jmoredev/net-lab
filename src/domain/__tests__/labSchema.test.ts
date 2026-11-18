@@ -207,6 +207,18 @@ describe('labSchema: addressing the old validator let through (D30)', () => {
     expect(issueOf(lab).code).toBe('dhcp-range-outside-subnet');
   });
 
+  it('rejects a DHCP range that starts below the first host octet', () => {
+    // The other edge of the rule the test above pins: usable hosts start at .2, so .1 is as far
+    // outside the subnet as .255 is above it, and the validator answers it the same way.
+    const lab = clone(sampleLab());
+    if (lab.router) lab.router.dhcpStart = 1;
+    expect(issueOf(lab)).toEqual({
+      path: 'lab.router.dhcpStart',
+      code: 'dhcp-range-outside-subnet',
+      params: { network: '192.168.1.0', start: 1, end: 100 },
+    });
+  });
+
   it('rejects a WAN address that is not an IPv4', () => {
     const lab = clone(sampleLab());
     if (lab.router) lab.router.wanIp = '203.0.113';

@@ -88,6 +88,7 @@ No objetivos de la extensión: no se piden direcciones MAC, ni SSID concretos, n
 | T9 — Catálogos es/en: frases de objetivo y niveles 9–10 | S71 | worker | ffc5445 |
 | T10 — Panel de objetivos con frases parametrizadas, «último nivel» por orden, README y suite | S74 | worker | ffc5445 |
 | T11 — Dificultad declarada por nivel con insignia en selector y panel | S75 | worker | 08fc80b |
+| T12 — Cierre de los advisories de review-50d9fe1042a83762: caseMeta al entrar, «todos los niveles» cierto, progreso saneado, invariantes compartidas y tipado de claves | — | worker | 00d678f, 6ef0675 |
 
 Entrega: rama `feat/desafios`, tramos de PR de ~400 líneas revisables contra `origin/main`, mismo flujo que «Casos».
 
@@ -119,3 +120,7 @@ Entrega: rama `feat/desafios`, tramos de PR de ~400 líneas revisables contra `o
 **L7 — Clasificación por dificultad pedida por el usuario (verbatim).** «Incluso los desafíos se podrían clasificar en 3 nieveles: fácil (verde), medio (naranja) y difícil (rojo) según los requisitos para completarllo». S75: la dificultad la fija lo que pide el nivel, no su posición; el mapeo concreto (verde 1/2/3/10, naranja 4/6/7, rojo 5/8/9) es decisión del agente registrada acá y ajustable como datos.
 
 **L8 — Cierre de las dos extensiones.** Configuración concreta (T8–T10, `ffc5445`): objetivos `address-is`, `router-network` y `device-named`, niveles 9 «La red del otro aula» y 10 «El aula rotulada», los ocho de S72 intactos. Dificultad (T11, `08fc80b`, S75/L7): insignia con palabra y color (verde/naranja/rojo) en selector y panel, mapeo fijado por requisitos. **Suite final: 481 tests en 35 archivos**, `tsc` limpio, build 101,34 KB gzip; los 449 previos pasan salvo los pins que S74/S75 mismos cambian, actualizados con fidelidad.
+
+**L9 — Follow-ups de la revisión, pedidos por el usuario (verbatim).** «Arrancamos con los follow-ups». Los ocho advisories de `review-50d9fe1042a83762` (R2-001 ya corregido en el propio PR): R3-002 limpiar `caseMeta` al entrar a un nivel; R3-001 «Has completado todos los niveles.» solo cuando estén los diez; R3-003 ids desconocidos del progreso se descartan; R2-002 las invariantes del rango DHCP viven en un solo lugar compartido por `setDhcpRange` y la evaluación de objetivos; R2-004 `levelTextKey` tipado para que la garantía de catálogo la vuelva a exigir el compilador; R2-003 el comentario del helper `add` deja de prometer lectura por rol. Rama `fix/desafios-advisories`.
+
+**L10 — T12 cerrado.** Los seis advisories pendientes, test primero en cada comportamiento (14 tests nuevos), más el cabo suelto que dejó el worker: la tercera copia de las reglas DHCP (la del codec de casos, `labSchema.ts`) ahora lee el mismo `dhcpRangeProblemFor` que el mutador y la evaluación de objetivos — solo quedan inline las dos guardias de enteros, porque el schema nombra el campo ofendido y el helper no puede. **496 tests en 35 archivos**, `tsc` limpio. Rama `fix/desafios-advisories` (3 commits, ~560 líneas).

@@ -105,6 +105,44 @@ describe('levelProgress: starting from zero (S66)', () => {
   });
 });
 
+/**
+ * An id that is not one of the ten levels of `LEVELS` is not progress: it is dropped, and an
+ * unknown «último» becomes nothing (S66, R3-003). Nothing of the payload is healed by hand: the
+ * stored value goes through the same door the app reads on every mount.
+ */
+describe('levelProgress: an id that is not a level is not progress (S66, R3-003)', () => {
+  it('drops the unknown ids and keeps the real ones, in the order they were stored', () => {
+    const parsed = parseJson({
+      version: 1,
+      progreso: { superados: ['enchufa-portatil', 'nivel-inventado', 'el-aula-rotulada'], ultimo: 'enchufa-portatil' },
+    });
+
+    expect(parsed).toEqual({ superados: ['enchufa-portatil', 'el-aula-rotulada'], ultimo: 'enchufa-portatil' });
+  });
+
+  it('starts empty when every stored id is unknown', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      LEVEL_PROGRESS_STORAGE_KEY,
+      JSON.stringify({ version: 1, progreso: { superados: ['nivel-inventado', 'otro-mas'], ultimo: 'nivel-inventado' } }),
+    );
+
+    expect(() => loadLevelProgress(storage)).not.toThrow();
+    expect(loadLevelProgress(storage)).toEqual(empty);
+  });
+
+  it('forgets an unknown last level instead of marking a ghost card', () => {
+    expect(parseJson({ version: 1, progreso: { superados: [], ultimo: 'nivel-inventado' } })).toEqual(empty);
+  });
+
+  it('keeps a stored progress of real ids exactly as it was written', () => {
+    const progress: LevelProgress = { superados: ['enchufa-portatil', 'el-aula-rotulada'], ultimo: 'el-aula-rotulada' };
+
+    expect(parseLevelProgress(serializeLevelProgress(progress))).toEqual(progress);
+    expect(LEVELS.some((level) => level.id === progress.ultimo)).toBe(true);
+  });
+});
+
 describe('levelProgress: a browser with storage disabled never breaks the level (S66)', () => {
   const throwing = {
     getItem: () => {
@@ -168,9 +206,9 @@ describe('levelProgress: the stored ids are level ids (S66, S72)', () => {
     saveLevelProgress(progress, storage);
     const restored = loadLevelProgress(storage);
 
-    expect(known).toContain(restored.ultimo);
+    expect(known.some((id) => id === restored.ultimo)).toBe(true);
     expect(restored.ultimo).toBe(known[1]);
-    expect(restored.superados.every((id) => known.includes(id))).toBe(true);
+    expect(restored.superados.every((id) => known.some((knownId) => knownId === id))).toBe(true);
     expect(restored.superados).toHaveLength(2);
   });
 });

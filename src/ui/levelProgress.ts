@@ -1,3 +1,5 @@
+import { isLevelId } from '../domain/levels';
+
 /**
  * The progress of the «Desafíos» levels, under its own key (S66). It belongs to the
  * browser and to nobody else: changing machine or clearing storage starts from zero,
@@ -90,8 +92,14 @@ function readLevelProgress(value: unknown): LevelProgress | null {
   const ultimo = value.ultimo;
   if (ultimo !== null && (typeof ultimo !== 'string' || ultimo === '')) return null;
 
-  // The order does not matter, the uniqueness does: a repeated id is one completed level.
-  return { superados: [...new Set(superados)], ultimo };
+  // The order does not matter, the uniqueness does: a repeated id is one completed level. An
+  // id that is not a level of `LEVELS` is not progress either, so it is dropped instead of
+  // persisted, and an unknown «último» becomes nothing rather than marking a ghost card. A
+  // payload with nothing real left is the empty start of S66, never an error (R3-003).
+  return {
+    superados: [...new Set(superados)].filter((id) => isLevelId(id)),
+    ultimo: ultimo !== null && isLevelId(ultimo) ? ultimo : null,
+  };
 }
 
 function resolveStorage(storage: Storage | undefined): Storage | null {

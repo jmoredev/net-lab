@@ -266,30 +266,67 @@ export function setRouterLanIp(lab: Lab, lanIp: string): Result<Lab> {
   return ok({ ...lab, router: { ...lab.router, lanIp } });
 }
 
+/**
+ * Why a DHCP range is not valid for the LAN address of a router, or `null` when it is (S73). This
+ * is the single copy of the invariant (R2-002): `setDhcpRange` turns each answer into its own
+ * error code and message, and the `router-network` goal of a level asks the same function, so
+ * the editor that writes a range and the goal that requires one cannot disagree about it.
+ */
+export type DhcpRangeProblem =
+  | 'dhcp-range-outside-subnet'
+  | 'dhcp-range-includes-router'
+  | 'dhcp-range-inverted';
+
+export function dhcpRangeProblemFor(
+  lanIp: string,
+  start: number,
+  end: number,
+): DhcpRangeProblem | null {
+  // The network and the broadcast address are not hosts, so a range that touches them is not a
+  // range of usable addresses of that /24.
+  const isHostNumber = (value: number) => Number.isInteger(value) && value >= 2 && value <= 254;
+  if (!isHostNumber(start) || !isHostNumber(end)) return 'dhcp-range-outside-subnet';
+
+  // The router cannot hand out its own address.
+  const routerHost = hostOctet(lanIp);
+  if (routerHost !== null && start <= routerHost && routerHost <= end) {
+    return 'dhcp-range-includes-router';
+  }
+
+  if (start > end) return 'dhcp-range-inverted';
+  return null;
+}
+
+/** Whether the editor would accept that range for a router on that address (S73, R2-002). */
+export function dhcpRangeIsValidFor(lanIp: string, start: number, end: number): boolean {
+  return dhcpRangeProblemFor(lanIp, start, end) === null;
+}
+
 export function setDhcpRange(lab: Lab, start: number, end: number): Result<Lab> {
   if (!lab.router) return fail('no-router-yet', 'Todavía no hay ningún router en el laboratorio.');
   const rawNetwork = networkOf(lab.router.lanIp);
   const network = rawNetwork ?? 'la subred del router';
-  const isHostNumber = (value: number) => Number.isInteger(value) && value >= 2 && value <= 254;
-  if (!isHostNumber(start) || !isHostNumber(end)) {
-    return fail(
-      'dhcp-range-outside-subnet',
-      `El rango debe estar dentro de la subred ${network}.`,
-      rawNetwork === null ? undefined : { network: rawNetwork, start, end },
-    );
+
+  // Each rule of the shared invariant keeps its own error code and message here: they are the
+  // public answer of this mutator, and the level goals read the same rules without them (R2-002).
+  switch (dhcpRangeProblemFor(lab.router.lanIp, start, end)) {
+    case 'dhcp-range-outside-subnet':
+      return fail(
+        'dhcp-range-outside-subnet',
+        `El rango debe estar dentro de la subred ${network}.`,
+        rawNetwork === null ? undefined : { network: rawNetwork, start, end },
+      );
+    case 'dhcp-range-includes-router':
+      return fail(
+        'dhcp-range-includes-router',
+        `El rango no puede incluir la dirección del router (${lab.router.lanIp}).`,
+        { routerIp: lab.router.lanIp, start, end },
+      );
+    case 'dhcp-range-inverted':
+      return fail('dhcp-range-inverted', 'La dirección final debe ser mayor o igual que la inicial.', { start, end });
+    case null:
+      return ok({ ...lab, router: { ...lab.router, dhcpStart: start, dhcpEnd: end } });
   }
-  const routerHost = hostOctet(lab.router.lanIp);
-  if (routerHost !== null && start <= routerHost && routerHost <= end) {
-    return fail(
-      'dhcp-range-includes-router',
-      `El rango no puede incluir la dirección del router (${lab.router.lanIp}).`,
-      { routerIp: lab.router.lanIp, start, end },
-    );
-  }
-  if (start > end) {
-    return fail('dhcp-range-inverted', 'La dirección final debe ser mayor o igual que la inicial.', { start, end });
-  }
-  return ok({ ...lab, router: { ...lab.router, dhcpStart: start, dhcpEnd: end } });
 }
 
 export interface AddressingPatch {

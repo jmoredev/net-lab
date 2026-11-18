@@ -19,7 +19,7 @@ import {
   type Lab,
   type Result,
 } from '../lab';
-import { LEVELS, evaluateGoals, isLevelComplete, type Level } from '../levels';
+import { LEVELS, LEVEL_IDS, evaluateGoals, isLevelComplete, type Level } from '../levels';
 
 function unwrap(result: Result<Lab>): Lab {
   if (!result.ok) throw new Error(result.error);
@@ -43,6 +43,13 @@ describe('the ten levels (S72, S74)', () => {
     expect(LEVELS).toHaveLength(10);
     expect(new Set(LEVELS.map((entry) => entry.id)).size).toBe(10);
     expect(LEVELS.map((entry) => entry.order)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  });
+
+  it('carries exactly the ids of the LevelId union, in the same order (R2-004)', () => {
+    // The union is what the compiler checks the catalogue mapping against, so the data and the
+    // union have to be the same ten ids: one list without the other is a level nobody can type.
+    expect(LEVELS.map((entry) => entry.id)).toEqual([...LEVEL_IDS]);
+    expect(new Set(LEVEL_IDS).size).toBe(LEVEL_IDS.length);
   });
 
   it('starts with every goal unmet in every level', () => {
